@@ -19,9 +19,9 @@ from zmq.eventloop import ioloop
 from zmq.eventloop.ioloop import PeriodicCallback
 
 import connection
-from crypto_util import pubkey_to_pyelliptic
 from dht import DHT
 from protocol import hello_request, hello_response, goodbye, proto_response_pubkey
+from crypto_util import BTC_CURVE, pubkey_to_pyelliptic
 import network_util
 
 
@@ -408,7 +408,7 @@ class CryptoTransportLayer(TransportLayer):
         self._myself = ec.ECC(
             pubkey=pubkey_to_pyelliptic(self.pubkey).decode('hex'),
             raw_privkey=self.secret.decode('hex'),
-            curve='secp256k1'
+            curve=BTC_CURVE
         )
 
         # In case user wants to override with command line passed bitmessage values

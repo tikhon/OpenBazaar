@@ -14,7 +14,7 @@ from zmq.eventloop import ioloop, zmqstream
 
 import constants
 from crypto_util import (
-    makePubCryptor, hexToPubkey, makePrivCryptor, pubkey_to_pyelliptic
+    BTC_CURVE, makePubCryptor, hexToPubkey, makePrivCryptor, pubkey_to_pyelliptic
 )
 from guid import GUIDMixin
 import network_util
@@ -339,7 +339,7 @@ class CryptoPeerListener(PeerListener):
         self._myself = ec.ECC(
             pubkey=pubkey_to_pyelliptic(self.pubkey).decode('hex'),
             raw_privkey=self.secret.decode('hex'),
-            curve='secp256k1'
+            curve=BTC_CURVE
         )
 
     def _on_raw_message(self, serialized):

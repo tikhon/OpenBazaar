@@ -1,6 +1,10 @@
 import pyelliptic as ec
 from pybitcointools import main as arithmetic
 
+BTC_CURVE = 'secp256k1'
+BTC_CURVE_OPENSSL_ID_HEX = '{:0>4x}'.format(ec.OpenSSL.get_curve(BTC_CURVE))
+BTC_EC_POINT_LENGTH = 32
+BTC_EC_POINT_LENGTH_HEX = '{:0>4x}'.format(BTC_EC_POINT_LENGTH)
 
 def pubkey_to_pyelliptic(pubkey):
     # Strip 04
