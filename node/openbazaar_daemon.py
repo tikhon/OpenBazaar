@@ -1,21 +1,26 @@
 import logging
 import json
+import multiprocessing
 import os
 import signal
 import time
-import multiprocessing
 
 import tornado.web
 from zmq.eventloop import ioloop
-ioloop.install()
 
 from db_store import Obdb
 from market import Market
-from ws import WebSocketHandler
-from util import open_default_webbrowser
 from network_util import get_random_free_tcp_port
 from transport import CryptoTransportLayer
 import upnp
+from util import open_default_webbrowser, is_mac
+from ws import WebSocketHandler
+
+if is_mac():
+    from util import osx_check_dyld_library_path
+    osx_check_dyld_library_path()
+
+ioloop.install()
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -35,9 +40,8 @@ class OpenBazaarContext(object):
     necessary to start an OpenBazaar instance.
 
     This object is convenient to pass on method interfaces,
-    and reduces issues of api inconsistencies (as in the order
-    in which parameters are passed, which can lead to unnecessary
-    bugs)
+    and reduces issues of API inconsistencies (as in the order
+    in which parameters are passed, which can cause bugs)
     """
     def __init__(self,
                  nat_status,
@@ -125,11 +129,6 @@ class MarketApplication(tornado.web.Application):
         self.transport = CryptoTransportLayer(ob_ctx, db)
 
         self.market = Market(self.transport, db)
-
-        # UNUSED
-        # def post_joined():
-        #     self.transport.dht._refreshNode()
-        #     self.market.republish_contracts()
 
         peers = ob_ctx.seed_peers if not ob_ctx.seed_mode else []
         self.transport.join_network(peers)

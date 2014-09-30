@@ -3,9 +3,9 @@
 # Authors: Angel Leon (@gubatron)
 
 import os
+import sys
 import argparse
 import multiprocessing
-from util import is_mac
 from openbazaar_daemon import node_starter
 from setup_db import setup_db
 from network_util import init_aditional_STUN_servers, check_NAT_status
@@ -220,7 +220,7 @@ openbazaar [options] <command>
 
 def create_openbazaar_contexts(arguments, nat_status):
     """
-    This method will return a list of OpenBazaarContext objects.
+    Returns List<OpenBazaarContext>.
 
     If we are on production mode, the list will contain a
     single OpenBazaarContext object based on the arguments passed.
@@ -471,9 +471,50 @@ def start(arguments):
     p.start()
 
 
+def load_config_file_arguments(parser):
+    """Loads config file's flags into sys.argv for further argument parsing."""
+    parsed_arguments = parser.parse_args()
+    if parsed_arguments.config_file is not None:
+        config_file_lines = []
+        with open(parsed_arguments.config_file) as fp:
+            try:
+                config_file_lines = fp.readlines()
+            except Exception as e:
+                print "notice: ignored invalid config file:", parsed_arguments.config_file
+                print e
+                return
+
+        # in case user entered config flags
+        # in multiple lines, we'll keep only
+        # those that don't start with '#'
+        # also ignore everything after a '#' character
+        # for every line.
+        valid_config_lines = []
+        for line in config_file_lines:
+            if line.startswith('#'):
+                continue
+
+            normalized_line = line.strip()
+            if line.find('#') != -1:
+                normalized_line = line[:line.find('#')]
+
+            if len(normalized_line) > 0:
+                valid_config_lines.append(normalized_line)
+
+        # 1. join read lines list into a string,
+        # 2. re-split it to make it look like sys.argv
+        # 3. get rid of possible '' list elements
+        # 4. merge the new arguments from the file into sys.argv
+        if len(valid_config_lines) > 0:
+            config_file_arguments = [x for x in
+                                     ' '.join(valid_config_lines).split(' ')
+                                     if len(x) > 0]
+            sys.argv = [sys.argv[0]] + config_file_arguments + sys.argv[1:]
+
+
 def main():
-    defaults = get_defaults()
     parser = create_argument_parser()
+    load_config_file_arguments(parser)
     arguments = parser.parse_args()
 
     print "Command: '" + arguments.command + "'"
