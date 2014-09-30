@@ -1,40 +1,54 @@
-import time
-import random
 import logging
+import random
+import time
+
 import constants
 import kbucket
 
 
 class RoutingTable(object):
-    """ Interface for RPC message translators/formatters
+    """
+    Interface for RPC message translators/formatters.
 
-    Classes inheriting from this should provide a suitable routing table for
-    a parent Node object (i.e. the local entity in the Kademlia network)
+    Classes inheriting from this should provide a suitable routing table
+    for a parent Node object (i.e. the local entity in the Kademlia
+    network).
     """
 
-    def __init__(self, parentNodeID, market_id=1):
+    def __init__(self, parent_node_id, market_id):
         """
-        @param parentNodeID: The 160-bit node ID of the node to which this
-                             routing table belongs
-        @type parentNodeID: str
+        Initialize a new RoutingTable.
+
+        @param parent_node_id: The node ID of the node to which this
+                               routing table belongs.
+        @type parent_node_id: guid.GUIDMixin or str or unicode
+
+        @param market_id: FILLME
+        @type: int
         """
         self.market_id = market_id
+        self.parentNodeID = parent_node_id
 
+    def _install_logger(self):
+        """Install a logger for the RoutingTable instance. """
         self.log = logging.getLogger(
             '[%s] %s' % (market_id, self.__class__.__name__)
         )
 
-    def addContact(self, contact):
-        """ Add the given contact to the correct k-bucket; if it already
-        exists, its status will be updated
+    def addContact(self, node_id):
+        """
+        Add the given node to the correct KBucket; if it already
+        exists, update its status.
 
-        @param contact: The contact to add to this node's k-buckets
+        @param contact: The contact to add to this node's KBuckets
         @type contact: guid.GUIDMixin or str or unicode
         """
+        raise NotImplementedError
 
     @staticmethod
     def distance(keyOne, keyTwo):
-        """ Calculate the XOR result between two string variables
+        """
+        Calculate the XOR result between two string variables.
 
         @return: XOR result of two long variables
         @rtype: long
@@ -43,96 +57,109 @@ class RoutingTable(object):
         valKeyTwo = long(keyTwo.encode('hex'), 16)
         return valKeyOne ^ valKeyTwo
 
-    def findCloseNodes(self, key, count, _rpcNodeID=None):
-        """ Finds a number of known nodes closest to the node/value with the
-        specified key.
+    def findCloseNodes(self, node_id, count, rpc_node_id=None):
+        """
+        Find a number of known nodes closest to the node/value with the
+        specified ID.
 
-        @param key: the 160-bit key (i.e. the node or value ID) to search for
-        @type key: str
-        @param count: the amount of contacts to return
+        @param node_id: The node ID to search for
+        @type node_id: guid.GUIDMixin or str or unicode
+
+        @param count: The amount of contacts to return
         @type count: int
-        @param _rpcNodeID: Used during RPC, this is be the sender's Node ID
-                           Whatever ID is passed in the paramater will get
-                           excluded from the list of returned contacts.
-        @type _rpcNodeID: str
 
-        @return: A list of node contacts
-                 (C{kademlia.contact.Contact instances})
-                 closest to the specified key.
-                 This method will return C{k} (or C{count}, if specified)
-                 contacts if at all possible; it will only return fewer if the
-                 node is returning all of the contacts that it knows of.
-        @rtype: list
+        @param rpc_node_id: Used during RPC, this is the sender's node ID.
+                            The ID passed as parameter is excluded from
+                            the list of returned contacts.
+        @type rpc_node_id: guid.GUIDMixin or str or unicode
+
+        @return: A list of nodes closest to the specified key.
+                 This method will return constants.k (or count, if
+                 specified) contacts if at all possible; it will only
+                 return fewer if the node is returning all of the
+                 contacts that it knows of.
+        @rtype: list of guid.GUIDMixin
         """
 
-    def getContact(self, contactID):
-        """ Returns the (known) contact with the specified node ID
+    def getContact(self, node_id):
+        """
+        Return the known node with the specified ID, None if not found.
 
-        @raise ValueError: No contact with the specified contact ID is known
-                           by this node
+        @param: node_id: The ID of the node to search for.
+        @type: guid.GUIDMixin or str or unicode
+
+        @return: The node with the specified ID or None
+        @rtype: guid.GUIDMixin or NoneType
         """
 
-    def getRefreshList(self, startIndex=0, force=False):
-        """ Finds all k-buckets that need refreshing, starting at the
-        k-bucket with the specified index, and returns IDs to be searched for
-        in order to refresh those k-buckets
+    def getRefreshList(self, start_index=0, force=False):
+        """
+        Find all KBuckets that need refreshing, starting at the KBucket
+        with the specified index, and return IDs to be searched for in
+        order to refresh those KBuckets.
 
-        @param startIndex: The index of the bucket to start refreshing at;
-                           this bucket and those further away from it will
-                           be refreshed. For example, when joining the
-                           network, this node will set this to the index of
-                           the bucket after the one containing it's closest
-                           neighbour.
-        @type startIndex: index
-        @param force: If this is C{True}, all buckets (in the specified range)
-                      will be refreshed, regardless of the time they were last
-                      accessed.
+        @param start_index: The index of the bucket to start refreshing
+                            at; this bucket and those further away from
+                            it will be refreshed. For example, when
+                            joining the network, this node will set this
+                            to the index of the bucket after the one
+                            containing its closest neighbour.
+        @type start_index: int
+
+        @param force: If this is True, all buckets in the specified
+                      range will be refreshed, regardless of the time
+                      they were last accessed.
         @type force: bool
 
-        @return: A list of node ID's that the parent node should search for
-                 in order to refresh the routing Table
-        @rtype: list
+        @return: A list of node IDs that the parent node should search for
+                 in order to refresh the routing Table.
+        @rtype: list of guid.GUIDMixin
         """
 
-    def removeContact(self, contactID):
-        """ Remove the contact with the specified node ID from the routing
-        table
+    def removeContact(self, node_id):
+        """
+        Remove the node with the specified ID from the routing table.
 
-        @param contactID: The node ID of the contact to remove
-        @type contactID: str
+        @param node_id: The ID of the node to remove.
+        @type node_id: guid.GUIDMixin or str or unicode
         """
 
-    def touchKBucket(self, key):
-        """ Update the "last accessed" timestamp of the k-bucket which covers
-        the range containing the specified key in the key/ID space
+    def touchKBucket(self, node_id):
+        """
+        Update the "last accessed" timestamp of the KBucket which covers
+        the range containing the specified key in the key/ID space.
 
-        @param key: A key in the range of the target k-bucket
-        @type key: str
+        @param node_id: A key in the range of the target KBucket
+        @type node_id: guid.GUIDMixin or str or unicode
         """
 
 
 class TreeRoutingTable(RoutingTable):
-    """ This class implements a routing table used by a Node class.
+    """
+    This class implements a routing table used by a Node class.
 
-    The Kademlia routing table is a binary tree whose leaves are k-buckets,
-    where each k-bucket contains nodes with some common prefix of their IDs.
-    This prefix is the k-bucket's position in the binary tree; it therefore
-    covers some range of ID values, and together all of the k-buckets cover
-    the entire 160-bit ID (or key) space (with no overlap).
+    The Kademlia routing table is a binary tree whose leaves are KBuckets,
+    where each KBucket contains nodes with some common prefix of their IDs.
+    This prefix is the KBucket's position in the binary tree; it therefore
+    covers some range of ID values, and together all of the KBuckets cover
+    the entire ID space, without any overlaps.
 
-    @note: In this implementation, nodes in the tree (the k-buckets) are
+    @note: In this implementation, nodes in the tree (the KBuckets) are
     added dynamically, as needed; this technique is described in the 13-page
     version of the Kademlia paper, in section 2.4. It does, however, use the
-    C{PING} RPC-based k-bucket eviction algorithm described in section 2.2 of
+    PING RPC-based KBucket eviction algorithm described in section 2.2 of
     that paper.
     """
 
     def __init__(self, parentNodeID, market_id):
         """
-            @param parentNodeID: The 160-bit node ID of the node to which this
-                                 routing table belongs
-            @type parentNodeID: str
-            """
+        Initialize a new TreeRoutingTable.
+
+        @param parentNodeID: The 160-bit node ID of the node to which this
+                             routing table belongs.
+        @type parentNodeID: str
+        FIXME: Can that be a guid.GUIDMixin?
+        """
         super(TreeRoutingTable, self).__init__(parentNodeID)
         self.log = logging.getLogger(
             '[%s] %s' % (market_id, self.__class__.__name__)
@@ -143,8 +170,9 @@ class TreeRoutingTable(RoutingTable):
         self.parentNodeID = parentNodeID
 
     def addContact(self, contact):
-        """ Add the given contact to the correct k-bucket; if it already
-        exists, its status will be updated
+        """
+        Add the given contact to the correct k-bucket; if it already
+        exists, update its status.
 
         @param contact: The contact to add to this node's k-buckets
         @type contact: guid.GUIDMixin or str or unicode
@@ -214,20 +242,21 @@ class TreeRoutingTable(RoutingTable):
                     df.addErrback(replaceContact)
 
     def findCloseNodes(self, key, count, nodeID=None):
-        """ Finds a number of known nodes closest to the node/value with the
+        """
+        Find a number of known nodes closest to the node/value with the
         specified key.
 
-        @param key: the 160-bit key (i.e. the node or value ID) to search for
+        @param key: The key (i.e. the node or value ID) to search for.
         @type key: str
+
         @param count: the amount of contacts to return
         @type count: int
-        @param nodeID: Used during RPC, this is be the sender's Node ID
-                           Whatever ID is passed in the paramater will get
-                           excluded from the list of returned contacts.
+        @param nodeID: Used during RPC, this is the sender's Node ID.
+                       The ID passed in the paramater is excluded from
+                       the list of contacts returned.
         @type nodeID: str
 
-        @return: A list of node contacts
-                 (C{kademlia.contact.Contact instances})
+        @return: A list of node contacts (C{guid.GUIDMixin instances})
                  closest to the specified key.
                  This method will return C{k} (or C{count}, if specified)
                  contacts if at all possible; it will only return fewer if the
@@ -236,23 +265,23 @@ class TreeRoutingTable(RoutingTable):
         """
         bucketIndex = self.kbucketIndex(key)
         bucket = self.buckets[bucketIndex]
-        closestNodes = bucket.getContacts(constants.k, nodeID)
+        closestNodes = bucket.getContacts(constants.k, node_id)
 
         # This method must return k contacts (even if we have the node with
         # the specified key as node ID), unless there is less than k remote
-        # nodes in the routing table
+        # nodes in the routing table.
         i = 1
         canGoLower = bucketIndex - i >= 0
         canGoHigher = bucketIndex + i < len(self.buckets)
         # Fill up the node list to k nodes, starting with the closest
-        # neighbouring nodes known
+        # neighbouring nodes known.
         while len(closestNodes) < constants.k and (canGoLower or canGoHigher):
             # TODO: this may need to be optimized
             if canGoLower:
                 bucket = self.buckets[bucketIndex - i]
                 closestNodes.extend(
                     bucket.getContacts(
-                        constants.k - len(closestNodes), nodeID
+                        constants.k - len(closestNodes), node_id
                     )
                 )
                 canGoLower = bucketIndex - (i + 1) >= 0
@@ -260,7 +289,7 @@ class TreeRoutingTable(RoutingTable):
                 bucket = self.buckets[bucketIndex + i]
                 closestNodes.extend(
                     bucket.getContacts(
-                        constants.k - len(closestNodes), nodeID
+                        constants.k - len(closestNodes), node_id
                     )
                 )
                 canGoHigher = bucketIndex + (i + 1) < len(self.buckets)
@@ -270,10 +299,11 @@ class TreeRoutingTable(RoutingTable):
         return closestNodes
 
     def getContact(self, contactID):
-        """ Returns the (known) contact with the specified node ID
+        """
+        Return the (known) contact with the specified node ID.
 
-        @raise ValueError: No contact with the specified contact ID is known
-                           by this node
+        @raise ValueError: This node knows no contact with
+                           the specified contact ID.
         """
 
         bucketIndex = self.kbucketIndex(contactID)
@@ -286,17 +316,19 @@ class TreeRoutingTable(RoutingTable):
             return contact
 
     def getRefreshList(self, startIndex=0, force=False):
-        """ Finds all k-buckets that need refreshing, starting at the
-        k-bucket with the specified index, and returns IDs to be searched for
-        in order to refresh those k-buckets
+        """
+        Find all k-buckets that need refreshing, starting at the
+        k-bucket with the specified index, and return IDs to be searched for
+        in order to refresh those k-buckets.
 
         @param startIndex: The index of the bucket to start refreshing at;
                            this bucket and those further away from it will
                            be refreshed. For example, when joining the
                            network, this node will set this to the index of
-                           the bucket after the one containing it's closest
+                           the bucket after the one containing its closest
                            neighbour.
         @type startIndex: index
+
         @param force: If this is C{True}, all buckets (in the specified range)
                       will be refreshed, regardless of the time they were last
                       accessed.
@@ -317,11 +349,11 @@ class TreeRoutingTable(RoutingTable):
         return refreshIDs
 
     def removeContact(self, contactID):
-        """ Remove the contact with the specified node ID from the routing
-        table
+        """
+        Remove the contact with the specified node ID from the routing table.
 
         @param contactID: The node ID of the contact to remove
-        @type contactID: str
+        @type contactID: guid.GUIDMixin or str or unicode
         """
         bucketIndex = self.kbucketIndex(contactID)
         try:
@@ -331,8 +363,9 @@ class TreeRoutingTable(RoutingTable):
             return
 
     def touchKBucket(self, key):
-        """ Update the "last accessed" timestamp of the k-bucket which covers
-        the range containing the specified key in the key/ID space
+        """
+        Update the "last accessed" timestamp of the k-bucket which covers
+        the range containing the specified key in the key/ID space.
 
         @param key: A key in the range of the target k-bucket
         @type key: str
@@ -341,8 +374,9 @@ class TreeRoutingTable(RoutingTable):
         self.buckets[bucketIndex].lastAccessed = int(time.time())
 
     def kbucketIndex(self, key):
-        """ Calculate the index of the k-bucket which is responsible for the
-        specified key (or ID)
+        """
+        Calculate the index of the k-bucket which is responsible for the
+        specified key (or ID).
 
         @param key: The key for which to find the appropriate k-bucket index
         @type key: str
@@ -363,7 +397,8 @@ class TreeRoutingTable(RoutingTable):
         return i
 
     def _randomIDInBucketRange(self, bucketIndex):
-        """ Returns a random ID in the specified k-bucket's range
+        """
+        Returns a random ID in the specified k-bucket's range.
 
         @param bucketIndex: The index of the k-bucket to use
         @type bucketIndex: int
@@ -382,24 +417,24 @@ class TreeRoutingTable(RoutingTable):
         return randomID
 
     def splitBucket(self, oldBucketIndex):
-        """ Splits the specified k-bucket into two new buckets which together
-        cover the same range in the key/ID space
+        """
+        Split the specified k-bucket into two new buckets which together cover
+        the same range in the key/ID space.
 
         @param oldBucketIndex: The index of k-bucket to split (in this table's
                                list of k-buckets)
         @type oldBucketIndex: int
         """
-        # Resize the range of the current (old) k-bucket
-        oldBucket = self.buckets[oldBucketIndex]
+        # Halve the range of the current (old) k-bucket.
+        oldBucket = self.buckets[old_bucket_index]
         splitPoint = oldBucket.rangeMax - (oldBucket.rangeMax - oldBucket.rangeMin) / 2
-        # Create a new k-bucket to cover the range split off from the old
-        # bucket
+        # Create a new k-bucket to cover the range split off from the old one.
         newBucket = kbucket.KBucket(
             splitPoint, oldBucket.rangeMax, self.market_id
         )
         oldBucket.rangeMax = splitPoint
         # Now, add the new bucket into the routing table tree
-        self.buckets.insert(oldBucketIndex + 1, newBucket)
+        self.buckets.insert(old_bucket_index + 1, newBucket)
         # Finally, copy all nodes that belong to the new k-bucket into it...
         for contact in oldBucket.contacts:
             if newBucket.keyInRange(contact.guid):
@@ -410,22 +445,25 @@ class TreeRoutingTable(RoutingTable):
 
 
 class OptimizedTreeRoutingTable(TreeRoutingTable):
-    """ A version of the "tree"-type routing table specified by Kademlia,
+    """
+    A version of the "tree"-type routing table specified by Kademlia,
     along with contact accounting optimizations specified in section 4.1 of
     of the 13-page version of the Kademlia paper.
     """
 
     def __init__(self, parentNodeID, market_id):
+        """Initialize a new OptimizedTreeRoutingTable."""
         TreeRoutingTable.__init__(self, parentNodeID, market_id)
         # Cache containing nodes eligible to replace stale k-bucket entries
         self.replacementCache = {}
 
     def addContact(self, contact):
-        """ Add the given contact to the correct k-bucket; if it already
-        exists, its status will be updated
+        """
+        Add the given contact to the correct k-bucket; if it already
+        exists, update its status.
 
         @param contact: The contact to add to this node's k-buckets
-        @type contact: kademlia.contact.Contact
+        @type contact: guid.GUIDMixin or str or unicode
         """
 
         if not contact.guid:
@@ -512,8 +550,8 @@ class OptimizedTreeRoutingTable(TreeRoutingTable):
                         self.replacementCache[bucketIndex].append(contact)
 
     def removeContact(self, contactID):
-        """ Remove the contact with the specified node ID from the routing
-        table
+        """
+        Remove the contact with the specified node ID from the routing table.
 
         @param contactID: The node ID of the contact to remove
         @type contactID: str
@@ -526,7 +564,7 @@ class OptimizedTreeRoutingTable(TreeRoutingTable):
             # print 'removeContact(): Contact not in routing table'
         else:
             # Replace this stale contact with one from our replacement
-            # cache, if we have any
+            # cache, if we have any.
             if bucketIndex in self.replacementCache:
                 if len(self.replacementCache[bucketIndex]) > 0:
                     self.buckets[bucketIndex].addContact(
@@ -536,7 +574,3 @@ class OptimizedTreeRoutingTable(TreeRoutingTable):
             self.log.debug(
                 'Contacts: %s' % self.buckets[bucketIndex].contacts
             )
-
-
-class TimeoutError(Exception):
-    """ Raised when a RPC times out """

@@ -50,8 +50,7 @@ class KBucket(object):
         The new contact is always appended to the contact list after removing
         any prior occurences of the same contact.
 
-        @param contact: The contact to add or a string containing the
-                        contact's node ID
+        @param contact: The ID of the contact to add.
         @type contact: guid.GUIDMixin or str or unicode
 
         @raise node.kbucket.BucketFull: The bucket is full and the contact
@@ -148,11 +147,10 @@ class KBucket(object):
         """
         Remove given contact from contact list.
 
-        @param contact: The contact to remove, or a string containing the
-                        contact's node ID.
+        @param contact: The ID of the contact to remove.
         @type contact: guid.GUIDMixin or str or unicode
 
-        @raise ValueError: The specified contact is not in this bucket
+        @raise ValueError: The specified contact is not in this bucket.
         """
         self.contacts.remove(contact)
 
@@ -165,8 +163,7 @@ class KBucket(object):
         @param key: The ID to test.
         @type key: guid.GUIDMixin or hex or int
 
-        @return: C{True} if key is in this k-bucket's range,
-                 C{False} otherwise.
+        @return: True if key is in this KBucket's range, False otherwise.
         @rtype: bool
         """
         if isinstance(key, guid.GUIDMixin):
