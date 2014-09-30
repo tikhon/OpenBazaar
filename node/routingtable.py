@@ -27,7 +27,7 @@ class RoutingTable(object):
         @type: int
         """
         self.market_id = market_id
-        self.parentNodeID = parent_node_id
+        self.parent_node_id = parent_node_id
 
     def _install_logger(self):
         """Install a logger for the RoutingTable instance. """
@@ -80,6 +80,7 @@ class RoutingTable(object):
                  contacts that it knows of.
         @rtype: list of guid.GUIDMixin
         """
+        raise NotImplementedError
 
     def getContact(self, node_id):
         """
@@ -91,6 +92,7 @@ class RoutingTable(object):
         @return: The node with the specified ID or None
         @rtype: guid.GUIDMixin or NoneType
         """
+        raise NotImplementedError
 
     def getRefreshList(self, start_index=0, force=False):
         """
@@ -115,6 +117,7 @@ class RoutingTable(object):
                  in order to refresh the routing Table.
         @rtype: list of guid.GUIDMixin
         """
+        raise NotImplementedError
 
     def removeContact(self, node_id):
         """
@@ -123,6 +126,7 @@ class RoutingTable(object):
         @param node_id: The ID of the node to remove.
         @type node_id: guid.GUIDMixin or str or unicode
         """
+        raise NotImplementedError
 
     def touchKBucket(self, node_id):
         """
@@ -132,6 +136,7 @@ class RoutingTable(object):
         @param node_id: A key in the range of the target KBucket
         @type node_id: guid.GUIDMixin or str or unicode
         """
+        raise NotImplementedError
 
 
 class TreeRoutingTable(RoutingTable):
