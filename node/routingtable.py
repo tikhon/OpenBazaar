@@ -342,19 +342,17 @@ class TreeRoutingTable(RoutingTable):
             bucketIndex += 1
         return refreshIDs
 
-    def removeContact(self, contactID):
+    def removeContact(self, node_id):
         """
-        Remove the contact with the specified node ID from the routing table.
+        Remove the node with the specified node ID from the routing table.
 
-        @param contactID: The node ID of the contact to remove
-        @type contactID: guid.GUIDMixin or str or unicode
+        For details, see RoutingTable documentation.
         """
-        bucketIndex = self.kbucketIndex(contactID)
+        bucketIndex = self.kbucketIndex(node_id)
         try:
-            self.buckets[bucketIndex].removeContact(contactID)
+            self.buckets[bucketIndex].removeContact(node_id)
         except ValueError:
-            # print 'removeContact(): Contact not in routing table'
-            return
+            self.log.error("Attempted to remove absent contact %s." % node_id)
 
     def touchKBucket(self, key):
         """
@@ -564,28 +562,31 @@ class OptimizedTreeRoutingTable(TreeRoutingTable):
                             self.replacement_cache.pop(0)
                         self.replacement_cache[bucketIndex].append(contact)
 
-    def removeContact(self, contactID):
+    def removeContact(self, node_id):
         """
-        Remove the contact with the specified node ID from the routing table.
+        Remove the node with the specified ID from the routing table.
 
-        @param contactID: The node ID of the contact to remove
-        @type contactID: str
+        For details, see TreeRoutingTable documentation.
         """
-        bucketIndex = self.kbucketIndex(contactID)
+        bucket_index = self.kbucketIndex(node_id)
         try:
-            self.buckets[bucketIndex].removeContact(contactID)
+            self.buckets[bucket_index].removeContact(node_id)
         except ValueError:
-            pass
-            # print 'removeContact(): Contact not in routing table'
+            self.log.error("Attempted to remove absent contact %s." % node_id)
         else:
             # Replace this stale contact with one from our replacement
-            # cache, if we have any.
-            if bucketIndex in self.replacementCache:
-                if len(self.replacement_cache[bucketIndex]) > 0:
-                    self.buckets[bucketIndex].addContact(
-                        self.replacement_cache[bucketIndex].pop()
-                    )
-
+            # cache, if available.
+            try:
+                cached = self.replacement_cache[bucket_index].pop()
+            except KeyError:
+                # No replacement cache for this bucket.
+                pass
+            except IndexError:
+                # No cached contact for this bucket.
+                pass
+            else:
+                self.buckets[bucket_index].addContact(cached)
+        finally:
             self.log.debug(
-                'Contacts: %s' % self.buckets[bucketIndex].contacts
+                'Contacts: %s' % self.buckets[bucket_index].contacts
             )

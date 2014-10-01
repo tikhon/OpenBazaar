@@ -121,8 +121,20 @@ class TestTreeRoutingTable(TestRoutingTable):
     def test_getRefreshList(self):
         pass
 
+    def _test_removeContact_scenario(self, contact):
+        self.assertNotIn(contact, self.rt.buckets[0])
+        self.rt.buckets[0].addContact(contact)
+        self.assertIn(contact, self.rt.buckets[0])
+        self.rt.removeContact(contact)
+        self.assertNotIn(contact, self.rt.buckets[0])
+
     def test_removeContact(self):
-        pass
+        self._test_removeContact_scenario(self.id1)
+        self._test_removeContact_scenario(unicode(self.id1))
+        self._test_removeContact_scenario(guid.GUIDMixin(self.id1))
+
+        # Removing an absent contact shouldn't raise a ValueError
+        self._test_removeContact_scenario(self.id2)
 
     def test_touchKBucket(self):
         pass
