@@ -163,8 +163,11 @@ class TreeRoutingTable(RoutingTable):
         super(TreeRoutingTable, self).__init__(parent_node_id, market_id)
 
         self.buckets = [
-            kbucket.KBucket(rangeMin=0, rangeMax=2**200, market_id=market_id)
-            # XXX: Why is the maximum range so big? Shouldn't it be just 2**160?
+            kbucket.KBucket(
+                rangeMin=0,
+                rangeMax=2**BIT_NODE_ID_LEN,
+                market_id=market_id
+            )
         ]
 
     def addContact(self, contact):
@@ -455,7 +458,9 @@ class OptimizedTreeRoutingTable(TreeRoutingTable):
 
         For details, see TreeRoutingTable documentation.
         """
-        super(OptimizedTreeRoutingTable, self).__init__(parent_node_id, market_id)
+        super(OptimizedTreeRoutingTable, self).__init__(
+            parent_node_id, market_id
+        )
 
         # Cache containing nodes eligible to replace stale k-bucket entries
         self.replacement_cache = {}
@@ -569,9 +574,9 @@ class OptimizedTreeRoutingTable(TreeRoutingTable):
             # Replace this stale contact with one from our replacement
             # cache, if we have any.
             if bucketIndex in self.replacementCache:
-                if len(self.replacementCache[bucketIndex]) > 0:
+                if len(self.replacement_cache[bucketIndex]) > 0:
                     self.buckets[bucketIndex].addContact(
-                        self.replacementCache[bucketIndex].pop()
+                        self.replacement_cache[bucketIndex].pop()
                     )
 
             self.log.debug(

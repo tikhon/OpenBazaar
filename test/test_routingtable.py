@@ -1,6 +1,6 @@
 import unittest
 
-from node import constants, guid, routingtable
+from node import constants, guid, kbucket, routingtable
 
 
 class TestRoutingTable(unittest.TestCase):
@@ -8,12 +8,17 @@ class TestRoutingTable(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.parent_node_id = "abcdefghijklmnopqrst"
+        cls.id1 = "a" * 20
+        cls.id2 = "b" * 20
+        cls.parent_node_id = cls.id1
         cls.market_id = 42
-        cls.guid = guid.GUIDMixin("YELLOW SUBMARINE")
+        cls.guid = guid.GUIDMixin(cls.id1)
 
     def setUp(self):
-        self.rt = routingtable.RoutingTable(self.parent_node_id, self.market_id)
+        self.rt = routingtable.RoutingTable(
+            self.parent_node_id,
+            self.market_id
+        )
 
     def test_init(self):
         self.assertEqual(self.rt.parent_node_id, self.parent_node_id)
@@ -24,7 +29,7 @@ class TestRoutingTable(unittest.TestCase):
         self.assertRaises(
             NotImplementedError,
             self.rt.addContact,
-            self.guid
+            self.id1
         )
 
     def test_findCloseNodes(self):
@@ -40,7 +45,7 @@ class TestRoutingTable(unittest.TestCase):
         self.assertRaises(
             NotImplementedError,
             self.rt.getContact,
-            self.guid
+            self.id1
         )
 
     def test_getRefreshList(self):
@@ -55,16 +60,34 @@ class TestRoutingTable(unittest.TestCase):
         self.assertRaises(
             NotImplementedError,
             self.rt.removeContact,
-            self.guid
+            self.id1
         )
 
 
 class TestTreeRoutingTable(TestRoutingTable):
     """Test TreeRoutingTable implementation of RoutingTable."""
 
+    def _ad_hoc_KBucket_eq(self, kbucket1, kbucket2, msg=None):
+        self.assertEqual(kbucket1.rangeMin, kbucket2.rangeMin, msg)
+        self.assertEqual(kbucket1.rangeMax, kbucket2.rangeMax, msg)
+        self.assertItemsEqual(kbucket1.contacts, kbucket2.contacts, msg)
+
+    @staticmethod
+    def _make_KBucket(range_min, range_max, market_id):
+        return kbucket.KBucket(
+            rangeMin=range_min,
+            rangeMax=range_max,
+            market_id=market_id
+        )
+
     @classmethod
     def setUpClass(cls):
         super(TestTreeRoutingTable, cls).setUpClass()
+        cls.range_min = 0
+        cls.range_max = 2**routingtable.BIT_NODE_ID_LEN
+        cls.init_kbuckets = [
+            cls._make_KBucket(cls.range_min, cls.range_max, cls.market_id)
+        ]
 
     def setUp(self):
         self.rt = routingtable.TreeRoutingTable(
@@ -77,6 +100,12 @@ class TestTreeRoutingTable(TestRoutingTable):
 
     def test_init(self):
         super(TestTreeRoutingTable, self).test_init()
+        self.assertTrue(hasattr(self.rt, 'buckets'))
+        self.addTypeEqualityFunc(kbucket.KBucket, self._ad_hoc_KBucket_eq)
+        # The following check cannot be simplified due to this bug
+        # http://www.gossamer-threads.com/lists/python/bugs/1159468
+        self.assertEqual(len(self.rt.buckets), 1)
+        self.assertEqual(self.rt.buckets[0], self.init_kbuckets[0])
 
     def test_addContact(self):
         pass
@@ -115,6 +144,8 @@ class TestOptimizedTreeRoutingTable(TestTreeRoutingTable):
 
     def test_init(self):
         super(TestOptimizedTreeRoutingTable, self).test_init()
+        self.assertTrue(hasattr(self.rt, 'replacement_cache'))
+        self.assertEqual(self.rt.replacement_cache, dict())
 
 if __name__ == "__main__":
     unittest.main()
