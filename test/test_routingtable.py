@@ -10,6 +10,8 @@ class TestRoutingTable(unittest.TestCase):
     def setUpClass(cls):
         cls.id1 = "a" * 20
         cls.id2 = "b" * 20
+        cls.uid1 = unicode(cls.id1)
+        cls.uid2 = unicode(cls.id2)
         cls.parent_node_id = cls.id1
         cls.market_id = 42
         cls.guid = guid.GUIDMixin(cls.id1)
@@ -31,6 +33,25 @@ class TestRoutingTable(unittest.TestCase):
             self.rt.addContact,
             self.id1
         )
+
+    def test_distance(self):
+        dist = self.rt.distance
+
+        self.assertEqual(0, dist("aaaa", "aaaa"))
+        self.assertNotEqual(0, dist("abcd", "dcba"))
+        self.assertEqual(0, dist("a" * 256, "a" * 256))
+        self.assertEqual(1, dist("2", "3"))
+        self.assertEqual(10, dist("2", "8"))
+        self.assertEqual(1953184666628070171L, dist("a" * 8, "z" * 8))
+
+        self.assertEqual(dist("aaaa", "bbbb"), dist("bbbb", "aaaa"))
+
+        self.assertEqual(dist("a", "b"), dist(u"a", "b"))
+        self.assertEqual(dist("a", "b"), dist("a", u"b"))
+        self.assertEqual(dist("a", "b"), dist(guid.GUIDMixin("a"), "b"))
+        self.assertEqual(dist("a", "b"), dist("a", guid.GUIDMixin("b")))
+
+        self.assertRaises(ValueError, dist, "a"* 4, "a" * 3)
 
     def test_findCloseNodes(self):
         self.assertRaises(

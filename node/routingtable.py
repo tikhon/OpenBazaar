@@ -45,16 +45,37 @@ class RoutingTable(object):
         raise NotImplementedError
 
     @staticmethod
-    def distance(keyOne, keyTwo):
+    def distance(node_id1, node_id2):
         """
         Calculate the XOR result between two string variables.
 
+        @param node_id1: The ID of the first node.
+        @type node_id1: guid.GUIDMixin or str or unicode
+
+        @param node_id2: The ID of the second node.
+        @type node_id1: guid.GUIDMixin or str or unicode
+
         @return: XOR result of two long variables
         @rtype: long
+
+        @raises: ValueError: The strings have unequal lengths.
         """
-        valKeyOne = long(keyOne.encode('hex'), 16)
-        valKeyTwo = long(keyTwo.encode('hex'), 16)
-        return valKeyOne ^ valKeyTwo
+        if isinstance(node_id1, guid.GUIDMixin):
+            hex_key1 = node_id1.guid.encode('hex')
+        else:
+            hex_key1 = node_id1.encode('hex')
+
+        if isinstance(node_id2, guid.GUIDMixin):
+            hex_key2 = node_id2.guid.encode('hex')
+        else:
+            hex_key2 = node_id2.encode('hex')
+
+        if len(hex_key1) != len(hex_key2):
+            # Exception modeled after Crypto.Util.strxor.strxor
+            raise ValueError("length of both strings must be equal")
+        val_key1 = long(hex_key1, 16)
+        val_key2 = long(hex_key2, 16)
+        return val_key1 ^ val_key2
 
     def findCloseNodes(self, node_id, count, rpc_node_id=None):
         """
