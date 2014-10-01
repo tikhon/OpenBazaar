@@ -125,6 +125,35 @@ class TestTreeRoutingTable(TestRoutingTable):
     def test_touchKBucket(self):
         pass
 
+    def test_kbucketIndex_bad_key(self):
+        bad_hex_key = "z"  # not a hex value
+        self.assertRaises(ValueError, self.rt.kbucketIndex, bad_hex_key)
+
+    def test_kbucketIndex_not_found(self):
+        ghost_hex_key = hex(self.range_max)
+        self.assertRaises(KeyError, self.rt.kbucketIndex, ghost_hex_key)
+
+    def test_kbucketIndex_many_found(self):
+        hex_key = hex(self.range_min)
+        # Insert duplicate kbucket
+        self.rt.buckets.append(self.rt.buckets[0])
+        self.assertRaises(RuntimeError, self.rt.kbucketIndex, hex_key)
+
+    def test_kbucketIndex_default(self):
+        half_range = self.range_min + (self.range_max - self.range_min) // 2
+        self.rt.buckets = [
+            self._make_KBucket(
+                self.range_min, half_range, self.market_id
+            ),
+            self._make_KBucket(
+                half_range, self.range_max, self.market_id
+            )
+        ]
+        hex_key = hex(half_range)
+        self.assertEqual(1, self.rt.kbucketIndex(hex_key))
+        self.assertEqual(1, self.rt.kbucketIndex(unicode(hex_key)))
+        self.assertEqual(1, self.rt.kbucketIndex(guid.GUIDMixin(hex_key)))
+
 
 class TestOptimizedTreeRoutingTable(TestTreeRoutingTable):
     """Test OptimizedTreeRoutingTable implementation of RoutingTable."""

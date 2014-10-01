@@ -3,6 +3,7 @@ import random
 import time
 
 import constants
+import guid
 import kbucket
 
 
@@ -374,28 +375,42 @@ class TreeRoutingTable(RoutingTable):
         bucketIndex = self.kbucketIndex(key)
         self.buckets[bucketIndex].lastAccessed = int(time.time())
 
-    def kbucketIndex(self, key):
+    def kbucketIndex(self, node_id):
         """
-        Calculate the index of the k-bucket which is responsible for the
+        Calculate the index of the KBucket which is responsible for the
         specified key (or ID).
 
-        @param key: The key for which to find the appropriate k-bucket index
-        @type key: str
+        @param key: The key for which to find the appropriate KBucket index
+        @type key: guid.GUIDMixin or str or unicode
 
-        @return: The index of the k-bucket responsible for the specified key
+        @raises: KeyError: The key was no KBucket's responsibility; absent key.
+                 RuntimeError: Many KBuckets responsible for same key;
+                               invariants have been violated.
+                 ValueError: The key is badly encoded.
+
+        @return: The index of the KBucket responsible for the specified key
         @rtype: int
         """
-        # print key
-        # print obelisk.DecodeBase58Check(key)
-        valKey = long(key, 16)
+        if isinstance(node_id, guid.GUIDMixin):
+            key = node_id.guid
+        else:
+            key = node_id
 
-        i = 0
-        for bucket in self.buckets:
-            if bucket.keyInRange(valKey):
-                return i
-            else:
-                i += 1
-        return i
+        # TODO: Since we are using monotonic node ID spaces,
+        # this *begs* to be done with binary search.
+        indexes = [
+            i
+            for i, bucket in enumerate(self.buckets)
+            if bucket.keyInRange(key)
+        ]
+
+        if not indexes:
+            raise KeyError("No KBucket responsible for key %s." % key)
+        elif len(indexes) > 1:
+            raise RuntimeError(
+                "Many KBuckets responsible for key %s." % key
+            )
+        return indexes[0]
 
     def _randomIDInBucketRange(self, bucketIndex):
         """
