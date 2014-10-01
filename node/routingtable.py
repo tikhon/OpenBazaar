@@ -300,22 +300,14 @@ class TreeRoutingTable(RoutingTable):
         self.log.debug('Closest Nodes: %s' % closestNodes)
         return closestNodes
 
-    def getContact(self, contactID):
+    def getContact(self, node_id):
         """
-        Return the (known) contact with the specified node ID.
+        Return the known node with the specified ID, None if not found.
 
-        @raise ValueError: This node knows no contact with
-                           the specified contact ID.
+        For details, see RoutingTable documentation.
         """
-
-        bucketIndex = self.kbucketIndex(contactID)
-
-        try:
-            contact = self.buckets[bucketIndex].getContact(contactID)
-        except ValueError:
-            raise
-        else:
-            return contact
+        bucket_index = self.kbucketIndex(node_id)
+        return self.buckets[bucket_index].getContact(node_id)
 
     def getRefreshList(self, startIndex=0, force=False):
         """

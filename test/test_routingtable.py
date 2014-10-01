@@ -114,7 +114,9 @@ class TestTreeRoutingTable(TestRoutingTable):
         pass
 
     def test_getContact(self):
-        pass
+        self.rt.buckets[0].addContact(self.id1)
+        self.assertEqual(self.id1, self.rt.getContact(self.id1))
+        self.assertIsNone(self.rt.getContact(self.id2))
 
     def test_getRefreshList(self):
         pass
@@ -175,6 +177,7 @@ class TestOptimizedTreeRoutingTable(TestTreeRoutingTable):
         super(TestOptimizedTreeRoutingTable, self).test_init()
         self.assertTrue(hasattr(self.rt, 'replacement_cache'))
         self.assertEqual(self.rt.replacement_cache, dict())
+
 
 if __name__ == "__main__":
     unittest.main()
