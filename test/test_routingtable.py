@@ -188,9 +188,6 @@ class TestTreeRoutingTable(TestRoutingTable):
         self.assertEqual(len(self.rt.buckets), 1)
         self.assertEqual(self.rt.buckets[0], self.init_kbuckets[0])
 
-    def test_addContact(self):
-        pass
-
     def test_findCloseNodes(self):
         pass
 
@@ -350,6 +347,9 @@ class TestOptimizedTreeRoutingTable(TestTreeRoutingTable):
         super(TestOptimizedTreeRoutingTable, self).test_init()
         self.assertTrue(hasattr(self.rt, 'replacement_cache'))
         self.assertEqual(self.rt.replacement_cache, dict())
+
+    def test_addContact(self):
+        pass
 
 
 if __name__ == "__main__":
