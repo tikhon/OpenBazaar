@@ -12,14 +12,18 @@ class BucketFull(Exception):
 class KBucket(object):
     """FILLME"""
 
-    def __init__(self, rangeMin, rangeMax, market_id=1):
+    def __init__(self, rangeMin, rangeMax, market_id):
         """
         Initialize a new KBucket with a range and a market_id.
 
-        @param rangeMin: The lower boundary for the range in the 160-bit ID
-                         space covered by this k-bucket
+        @param rangeMin: The lower boundary for the range in the ID space
+                         covered by this KBucket.
+        @type: int
+
         @param rangeMax: The upper boundary for the range in the ID space
-                         covered by this k-bucket
+                         covered by this KBucket.
+        @type: int
+
         @param market_id: FILLME
         """
 
@@ -35,6 +39,9 @@ class KBucket(object):
 
     def __len__(self):
         return len(self.contacts)
+
+    def __iter__(self):
+        return iter(self.contacts)
 
     def addContact(self, contact):
         """
@@ -98,7 +105,7 @@ class KBucket(object):
         @type count: int
         @param excludeContact: A contact to exclude; if this contact is in
                                the list of returned values, it will be
-                               discarded before returning. If a C{str} is
+                               discarded before returning. If a str is
                                passed as this argument, it must be the
                                contact's ID.
         @type excludeContact: guid.GUIDMixin or str or unicode
@@ -142,7 +149,7 @@ class KBucket(object):
         Remove given contact from contact list.
 
         @param contact: The contact to remove, or a string containing the
-                        contact's node ID
+                        contact's node ID.
         @type contact: guid.GUIDMixin or str or unicode
 
         @raise ValueError: The specified contact is not in this bucket
@@ -151,18 +158,19 @@ class KBucket(object):
 
     def keyInRange(self, key):
         """
-        Tests whether the specified key (i.e. node ID) is in the range
-        of the 160-bit ID space covered by this k-bucket (in other words, it
-        returns whether or not the specified key should be placed in this
-        k-bucket)
+        Tests whether the specified node ID is in the range of the ID
+        space covered by this KBucket (in other words, it returns
+        whether or not the specified key should be placed in this KBucket.
 
-        @param key: The key to test
-        @type key: str or int
+        @param key: The ID to test.
+        @type key: guid.GUIDMixin or hex or int
 
         @return: C{True} if key is in this k-bucket's range,
                  C{False} otherwise.
         @rtype: bool
         """
+        if isinstance(key, guid.GUIDMixin):
+            key = key.guid
         if isinstance(key, basestring):
             key = long(key, 16)
         return self.rangeMin <= key < self.rangeMax

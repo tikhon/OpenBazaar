@@ -22,5 +22,8 @@ class GUIDMixin(object):
             return self.guid == other
         return False
 
+    def __hash__(self):
+        return hash(self.guid)
+
     def __repr__(self):
         return repr(self.guid)

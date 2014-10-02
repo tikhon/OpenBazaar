@@ -47,6 +47,15 @@ class TestGUIDMixin(unittest.TestCase):
         self._test_eq_false_scenario(self.uguid, self.alt_guid)
         self._test_eq_false_scenario(self.uguid, self.alt_uguid)
 
+    def test_hash(self):
+        a = guid.GUIDMixin(self.guid)
+        self.assertEqual(hash(a), hash(self.guid))
+        self.assertEqual(hash(a), hash(self.uguid))
+
+        b = guid.GUIDMixin(self.uguid)
+        self.assertEqual(hash(b), hash(self.guid))
+        self.assertEqual(hash(b), hash(self.uguid))
+
     def test_repr(self):
         g = guid.GUIDMixin(self.guid)
         self.assertEqual(g.__repr__(), str(g))
