@@ -148,13 +148,17 @@ class RoutingTable(object):
         """
         raise NotImplementedError
 
-    def touchKBucket(self, node_id):
+    def touchKBucket(self, node_id, timestamp=None):
         """
         Update the "last accessed" timestamp of the KBucket which covers
         the range containing the specified key in the key/ID space.
 
         @param node_id: A key in the range of the target KBucket
         @type node_id: guid.GUIDMixin or str or unicode
+
+        @param timestamp: The timestamp to set on the bucket.
+                          If None, it will be set to int(time.time()).
+        @type timestamp: int
         """
         raise NotImplementedError
 
@@ -375,16 +379,17 @@ class TreeRoutingTable(RoutingTable):
         except ValueError:
             self.log.error("Attempted to remove absent contact %s." % node_id)
 
-    def touchKBucket(self, key):
+    def touchKBucket(self, node_id, timestamp=None):
         """
-        Update the "last accessed" timestamp of the k-bucket which covers
+        Update the "last accessed" timestamp of the KBucket which covers
         the range containing the specified key in the key/ID space.
 
-        @param key: A key in the range of the target k-bucket
-        @type key: str
+        For details, see RoutingTable documentation.
         """
-        bucketIndex = self.kbucketIndex(key)
-        self.buckets[bucketIndex].lastAccessed = int(time.time())
+        if timestamp is None:
+            timestamp = int(time.time())
+        bucket_index = self.kbucketIndex(node_id)
+        self.buckets[bucket_index].lastAccessed = timestamp
 
     def kbucketIndex(self, node_id):
         """

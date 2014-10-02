@@ -1,3 +1,4 @@
+import time
 import unittest
 
 from node import constants, guid, kbucket, routingtable
@@ -84,6 +85,14 @@ class TestRoutingTable(unittest.TestCase):
             self.id1
         )
 
+    def test_touchKBucket(self):
+        self.assertRaises(
+            NotImplementedError,
+            self.rt.touchKBucket,
+            self.id1,
+            timestamp=42
+        )
+
 
 class TestTreeRoutingTable(TestRoutingTable):
     """Test TreeRoutingTable implementation of RoutingTable."""
@@ -158,7 +167,36 @@ class TestTreeRoutingTable(TestRoutingTable):
         self._test_removeContact_scenario(self.id2)
 
     def test_touchKBucket(self):
-        pass
+        half_range = self.range_min + (self.range_max - self.range_min) // 2
+        self.rt.buckets = [
+            self._make_KBucket(
+                self.range_min, half_range, self.market_id
+            ),
+            self._make_KBucket(
+                half_range, self.range_max, self.market_id
+            )
+        ]
+
+        self.assertEqual(
+            self.rt.buckets[0].lastAccessed,
+            self.rt.buckets[1].lastAccessed
+        )
+
+        now = int(time.time())
+        self.assertNotEqual(now, self.rt.buckets[0].lastAccessed)
+
+        hex_key = hex(half_range)
+        self.rt.touchKBucket(hex_key, timestamp=now)
+        self.assertLessEqual(now, self.rt.buckets[1].lastAccessed)
+        self.assertNotEqual(
+            self.rt.buckets[0].lastAccessed,
+            self.rt.buckets[1].lastAccessed
+        )
+
+        now2 = now + 1
+        self.rt.touchKBucket(hex(half_range - 1), now2)
+        self.assertEqual(now, self.rt.buckets[1].lastAccessed)
+        self.assertEqual(now2, self.rt.buckets[0].lastAccessed)
 
     def test_kbucketIndex_bad_key(self):
         bad_hex_key = "z"  # not a hex value
