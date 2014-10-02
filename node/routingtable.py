@@ -1,5 +1,4 @@
 import logging
-import random
 import time
 
 import constants
@@ -368,38 +367,27 @@ class TreeRoutingTable(RoutingTable):
         bucket_index = self.kbucketIndex(node_id)
         return self.buckets[bucket_index].getContact(node_id)
 
-    def getRefreshList(self, startIndex=0, force=False):
+    def getRefreshList(self, start_index=0, force=False):
         """
-        Find all k-buckets that need refreshing, starting at the
-        k-bucket with the specified index, and return IDs to be searched for
+        Find all KBuckets that need refreshing, starting at the
+        KBucket with the specified index, and return IDs to be searched for
         in order to refresh those k-buckets.
 
-        @param startIndex: The index of the bucket to start refreshing at;
-                           this bucket and those further away from it will
-                           be refreshed. For example, when joining the
-                           network, this node will set this to the index of
-                           the bucket after the one containing its closest
-                           neighbour.
-        @type startIndex: index
-
-        @param force: If this is C{True}, all buckets (in the specified range)
-                      will be refreshed, regardless of the time they were last
-                      accessed.
-        @type force: bool
-
-        @return: A list of node ID's that the parent node should search for
-                 in order to refresh the routing Table
-        @rtype: list
+        For details, see RoutingTable documentation.
         """
-        bucketIndex = startIndex
-        refreshIDs = []
-        for bucket in self.buckets[startIndex:]:
-            if force or \
-               int(time.time()) - bucket.lastAccessed >= constants.refreshTimeout:
-                searchID = self._randomIDInBucketRange(bucketIndex).encode('hex')
-                refreshIDs.append(searchID)
-            bucketIndex += 1
-        return refreshIDs
+        if force:
+            # Copy the list to avoid accidental mutation.
+            return list(self.buckets[start_index:])
+
+        now = int(time.time())
+        timeout = constants.refreshTimeout
+        return [
+            # Since rangeMin is always in the KBucket's range
+            # return that as a representative.
+            self.numToId(bucket.rangeMin)
+            for bucket in self.buckets[start_index:]
+            if now - bucket.lastAccessed >= timeout
+        ]
 
     def removeContact(self, node_id):
         """
@@ -461,17 +449,6 @@ class TreeRoutingTable(RoutingTable):
                 "Many KBuckets responsible for key %s." % key
             )
         return indexes[0]
-
-    def _randomIDInBucketRange(self, bucket_index):
-        """
-        Returns a random ID in the specified KBucket's range.
-
-        @param bucket_index: The index of the KBbucket to use
-        @type bucket_index: int
-        """
-        bucket = self.buckets[bucket_index]
-        range_min, range_max = bucket.rangeMin, bucket.rangeMax
-        return self.numToId(random.randrange(range_min, range_max))
 
     def splitBucket(self, old_bucket_index):
         """

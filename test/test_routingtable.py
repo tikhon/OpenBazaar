@@ -199,8 +199,75 @@ class TestTreeRoutingTable(TestRoutingTable):
         self.assertEqual(self.id1, self.rt.getContact(self.id1))
         self.assertIsNone(self.rt.getContact(self.id2))
 
+    def _init_N_buckets(self, N):
+        bucket_range = self.range_max - self.range_min
+        chop = bucket_range // N
+        self.rt.buckets = [
+            self._make_KBucket(
+                self.range_min + i * chop,
+                min(self.range_min + (i + 1) * chop, self.range_max),
+                self.market_id
+            )
+            for i in range(N)
+        ]
+        return self.range_min + bucket_range // N
+
     def test_getRefreshList(self):
+        # We will override the parent method case-by case.
         pass
+
+    def test_getRefreshList_force(self):
+        self._init_N_buckets(7)
+        self.assertEqual(
+            self.rt.buckets,
+            self.rt.getRefreshList(force=True)
+        )
+
+        self.assertEqual(
+            self.rt.buckets[1:],
+            self.rt.getRefreshList(start_index=1, force=True)
+        )
+
+        # Check immutability
+        refresh_list = self.rt.getRefreshList(force=True)
+        refresh_list.pop(0)
+        self.assertEqual(
+            refresh_list,
+            self.rt.getRefreshList(force=True)[1:]
+        )
+
+    def test_getRefreshList_noforce(self):
+        bucket_count = 7
+        self._init_N_buckets(bucket_count)
+        stale_idxs = set((0, 3, 6))
+        for i in range(bucket_count):
+            bucket = self.rt.buckets[i]
+            self.assertEqual(0, bucket.lastAccessed)
+            if i not in stale_idxs:
+                self.rt.touchKBucket(self.rt.numToId(bucket.rangeMin))
+
+        refresh_list = self.rt.getRefreshList()
+        recovered_idxs = set()
+        for node_id in refresh_list:
+            bucket_idx = self.rt.kbucketIndex(node_id)
+            recovered_idxs.add(bucket_idx)
+        self.assertEqual(stale_idxs, recovered_idxs)
+
+        # Check immutability
+        refresh_list = self.rt.getRefreshList()
+        refresh_list.pop(0)
+        self.assertEqual(
+            refresh_list,
+            self.rt.getRefreshList()[1:]
+        )
+
+        refresh_list = self.rt.getRefreshList(start_index=4)
+        recovered_idxs = set()
+        for node_id in refresh_list:
+            bucket_idx = self.rt.kbucketIndex(node_id)
+            recovered_idxs.add(bucket_idx)
+        new_stale_idxs = {idx for idx in stale_idxs if idx >= 4}
+        self.assertEqual(new_stale_idxs, recovered_idxs)
 
     def _test_removeContact_scenario(self, contact):
         self.assertNotIn(contact, self.rt.buckets[0])
@@ -218,15 +285,7 @@ class TestTreeRoutingTable(TestRoutingTable):
         self._test_removeContact_scenario(self.id2)
 
     def test_touchKBucket(self):
-        half_range = self.range_min + (self.range_max - self.range_min) // 2
-        self.rt.buckets = [
-            self._make_KBucket(
-                self.range_min, half_range, self.market_id
-            ),
-            self._make_KBucket(
-                half_range, self.range_max, self.market_id
-            )
-        ]
+        half_range = self._init_N_buckets(2)
 
         self.assertEqual(
             self.rt.buckets[0].lastAccessed,
@@ -264,19 +323,11 @@ class TestTreeRoutingTable(TestRoutingTable):
         self.assertRaises(RuntimeError, self.rt.kbucketIndex, hex_key)
 
     def test_kbucketIndex_default(self):
-        half_range = self.range_min + (self.range_max - self.range_min) // 2
-        self.rt.buckets = [
-            self._make_KBucket(
-                self.range_min, half_range, self.market_id
-            ),
-            self._make_KBucket(
-                half_range, self.range_max, self.market_id
-            )
-        ]
-        hex_key = self.rt.numToId(half_range)
+        hex_key = self.rt.numToId(self._init_N_buckets(2))
         self.assertEqual(1, self.rt.kbucketIndex(hex_key))
         self.assertEqual(1, self.rt.kbucketIndex(unicode(hex_key)))
         self.assertEqual(1, self.rt.kbucketIndex(guid.GUIDMixin(hex_key)))
+
 
 
 class TestOptimizedTreeRoutingTable(TestTreeRoutingTable):
