@@ -35,24 +35,75 @@ class TestRoutingTable(unittest.TestCase):
             self.id1
         )
 
-    def test_distance(self):
-        dist = self.rt.distance
+    @staticmethod
+    def _lpad_node_id_len(node_id):
+        return node_id.rjust(constants.HEX_NODE_ID_LEN, "0")
 
-        self.assertEqual(0, dist("aaaa", "aaaa"))
+    def test_distance(self):
+        def dist(node_id1, node_id2):
+            return self.rt.distance(
+                self._lpad_node_id_len(node_id1),
+                self._lpad_node_id_len(node_id2)
+            )
+
+        self.assertEqual(0, dist("a", "a"))
         self.assertNotEqual(0, dist("abcd", "dcba"))
-        self.assertEqual(0, dist("a" * 256, "a" * 256))
         self.assertEqual(1, dist("2", "3"))
         self.assertEqual(10, dist("2", "8"))
-        self.assertEqual(1953184666628070171L, dist("a" * 8, "z" * 8))
+        self.assertEqual(4008636142L, dist("1" * 8, "f" * 8))
 
-        self.assertEqual(dist("aaaa", "bbbb"), dist("bbbb", "aaaa"))
+        d_ab = dist("a", "b")
+        self.assertEqual(d_ab, dist("b", "a"))
 
-        self.assertEqual(dist("a", "b"), dist(u"a", "b"))
-        self.assertEqual(dist("a", "b"), dist("a", u"b"))
-        self.assertEqual(dist("a", "b"), dist(guid.GUIDMixin("a"), "b"))
-        self.assertEqual(dist("a", "b"), dist("a", guid.GUIDMixin("b")))
+        self.assertEqual(d_ab, dist(u"a", "b"))
+        self.assertEqual(d_ab, dist("a", u"b"))
 
-        self.assertRaises(ValueError, dist, "a"* 4, "a" * 3)
+        self.assertEqual(
+            d_ab,
+            self.rt.distance(
+                guid.GUIDMixin(self._lpad_node_id_len("a")),
+                self._lpad_node_id_len("b")
+            )
+        )
+        self.assertEqual(
+            d_ab,
+            self.rt.distance(
+                self._lpad_node_id_len("a"),
+                guid.GUIDMixin(self._lpad_node_id_len("b"))
+            )
+        )
+
+        self.assertRaises(
+            ValueError,
+            self.rt.distance,
+            "a" * 4,
+            "a" * constants.HEX_NODE_ID_LEN
+        )
+
+        self.assertRaises(
+            ValueError,
+            self.rt.distance,
+            "a" * constants.HEX_NODE_ID_LEN,
+            "a" * 4
+        )
+
+    def test_num_to_id(self):
+        self.assertEqual(
+            self.rt.numToId(0),
+            '0000000000000000000000000000000000000000'
+        )
+        self.assertEqual(
+            self.rt.numToId(42),
+            '000000000000000000000000000000000000002a'
+        )
+        self.assertEqual(
+            self.rt.numToId(2**100),
+            '0000000000000010000000000000000000000000'
+        )
+        self.assertEqual(
+            self.rt.numToId(2**160 - 1),
+            'ffffffffffffffffffffffffffffffffffffffff'
+        )
 
     def test_findCloseNodes(self):
         self.assertRaises(
@@ -114,7 +165,7 @@ class TestTreeRoutingTable(TestRoutingTable):
     def setUpClass(cls):
         super(TestTreeRoutingTable, cls).setUpClass()
         cls.range_min = 0
-        cls.range_max = 2**routingtable.BIT_NODE_ID_LEN
+        cls.range_max = 2**constants.BIT_NODE_ID_LEN
         cls.init_kbuckets = [
             cls._make_KBucket(cls.range_min, cls.range_max, cls.market_id)
         ]
@@ -185,7 +236,7 @@ class TestTreeRoutingTable(TestRoutingTable):
         now = int(time.time())
         self.assertNotEqual(now, self.rt.buckets[0].lastAccessed)
 
-        hex_key = hex(half_range)
+        hex_key = self.rt.numToId(half_range)
         self.rt.touchKBucket(hex_key, timestamp=now)
         self.assertLessEqual(now, self.rt.buckets[1].lastAccessed)
         self.assertNotEqual(
@@ -194,7 +245,7 @@ class TestTreeRoutingTable(TestRoutingTable):
         )
 
         now2 = now + 1
-        self.rt.touchKBucket(hex(half_range - 1), now2)
+        self.rt.touchKBucket(self.rt.numToId(half_range - 1), now2)
         self.assertEqual(now, self.rt.buckets[1].lastAccessed)
         self.assertEqual(now2, self.rt.buckets[0].lastAccessed)
 
@@ -203,11 +254,11 @@ class TestTreeRoutingTable(TestRoutingTable):
         self.assertRaises(ValueError, self.rt.kbucketIndex, bad_hex_key)
 
     def test_kbucketIndex_not_found(self):
-        ghost_hex_key = hex(self.range_max)
+        ghost_hex_key = self.rt.numToId(self.range_max)
         self.assertRaises(KeyError, self.rt.kbucketIndex, ghost_hex_key)
 
     def test_kbucketIndex_many_found(self):
-        hex_key = hex(self.range_min)
+        hex_key = self.rt.numToId(self.range_min)
         # Insert duplicate kbucket
         self.rt.buckets.append(self.rt.buckets[0])
         self.assertRaises(RuntimeError, self.rt.kbucketIndex, hex_key)
@@ -222,7 +273,7 @@ class TestTreeRoutingTable(TestRoutingTable):
                 half_range, self.range_max, self.market_id
             )
         ]
-        hex_key = hex(half_range)
+        hex_key = self.rt.numToId(half_range)
         self.assertEqual(1, self.rt.kbucketIndex(hex_key))
         self.assertEqual(1, self.rt.kbucketIndex(unicode(hex_key)))
         self.assertEqual(1, self.rt.kbucketIndex(guid.GUIDMixin(hex_key)))

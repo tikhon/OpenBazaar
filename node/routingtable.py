@@ -58,24 +58,58 @@ class RoutingTable(object):
         @return: XOR result of two long variables
         @rtype: long
 
-        @raises: ValueError: The strings have unequal lengths.
+        @raises: ValueError: The strings have improper lengths for IDs.
         """
         if isinstance(node_id1, guid.GUIDMixin):
-            hex_key1 = node_id1.guid.encode('hex')
+            key1 = node_id1.guid
         else:
-            hex_key1 = node_id1.encode('hex')
+            key1 = node_id1
 
         if isinstance(node_id2, guid.GUIDMixin):
-            hex_key2 = node_id2.guid.encode('hex')
+            key2 = node_id2.guid
         else:
-            hex_key2 = node_id2.encode('hex')
+            key2 = node_id2
 
-        if len(hex_key1) != len(hex_key2):
-            # Exception modeled after Crypto.Util.strxor.strxor
-            raise ValueError("length of both strings must be equal")
-        val_key1 = long(hex_key1, 16)
-        val_key2 = long(hex_key2, 16)
+        if len(key1) != constants.HEX_NODE_ID_LEN:
+            raise ValueError(
+                "node_id1 has invalid length %d; must be %d" % (
+                    len(key1),
+                    constants.HEX_NODE_ID_LEN
+                )
+            )
+
+        if len(key2) != constants.HEX_NODE_ID_LEN:
+            raise ValueError(
+                "node_id2 has invalid length %d; must be %d" % (
+                    len(key2),
+                    constants.HEX_NODE_ID_LEN
+                )
+            )
+
+        val_key1 = long(key1, 16)
+        val_key2 = long(key2, 16)
         return val_key1 ^ val_key2
+
+    @staticmethod
+    def numToId(node_num):
+        """
+        Converts an integer to a node ID.
+
+        It is the caller's responsibility to ensure the resulting
+        node ID falls in the ID space.
+
+        @param node_num: The integer to convert.
+        @type node_num: int
+
+        @return: A node ID (hex) corresponding to the number given.
+        @rtype: str
+        """
+        # Convert to hex string.
+        node_id = hex(node_num)
+        # Strip '0x' prefix and 'L' suffix.
+        bare_node_id = node_id.lstrip("0x").rstrip("L")
+        # Pad to proper length and return.
+        return bare_node_id.rjust(constants.HEX_NODE_ID_LEN, '0')
 
     def findCloseNodes(self, node_id, count, rpc_node_id=None):
         """
@@ -191,7 +225,7 @@ class TreeRoutingTable(RoutingTable):
         self.buckets = [
             kbucket.KBucket(
                 rangeMin=0,
-                rangeMax=2**BIT_NODE_ID_LEN,
+                rangeMax=2**constants.BIT_NODE_ID_LEN,
                 market_id=market_id
             )
         ]
@@ -428,27 +462,18 @@ class TreeRoutingTable(RoutingTable):
             )
         return indexes[0]
 
-    def _randomIDInBucketRange(self, bucketIndex):
+    def _randomIDInBucketRange(self, bucket_index):
         """
-        Returns a random ID in the specified k-bucket's range.
+        Returns a random ID in the specified KBucket's range.
 
-        @param bucketIndex: The index of the k-bucket to use
-        @type bucketIndex: int
+        @param bucket_index: The index of the KBbucket to use
+        @type bucket_index: int
         """
-        idValue = random.randrange(
-            self.buckets[bucketIndex].rangeMin,
-            self.buckets[bucketIndex].rangeMax
-        )
-        randomID = hex(idValue)[2:]
-        if randomID[-1] == 'L':
-            randomID = randomID[:-1]
-        if len(randomID) % 2 != 0:
-            randomID = '0' + randomID
-        randomID = randomID.decode('hex')
-        randomID = (20 - len(randomID)) * '\x00' + randomID
-        return randomID
+        bucket = self.buckets[bucket_index]
+        range_min, range_max = bucket.rangeMin, bucket.rangeMax
+        return self.numToId(random.randrange(range_min, range_max))
 
-    def splitBucket(self, oldBucketIndex):
+    def splitBucket(self, old_bucket_index):
         """
         Split the specified k-bucket into two new buckets which together cover
         the same range in the key/ID space.
