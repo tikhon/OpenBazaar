@@ -12,8 +12,13 @@ class TestCryptoUtil(unittest.TestCase):
         cls.privkey_hex = (
             'e9873d79c6d87dc0fb6a5778633389f4453213303da61f20bd67fc233aa33262'
         )
+        cls.privkey_bin = crypto_util.privkey_to_pyelliptic(cls.privkey_hex)
+
         cls.pubkey_hex = arithmetic.privkey_to_pubkey(cls.privkey_hex)
+        cls.pubkey_bin = crypto_util.pubkey_to_pyelliptic(cls.pubkey_hex)
         cls.pubkey_hex_strip = cls.pubkey_hex[2:]
+
+        cls.plaintext = "YELLOW SUBMARINE"
 
     def test_exported_names(self):
         self.assertEqual('secp256k1', crypto_util.BTC_CURVE)
@@ -50,31 +55,90 @@ class TestCryptoUtil(unittest.TestCase):
         self.assertEqual(privkey_bin_fmt[2:4], length_bin)
         self.assertEqual(privkey_bin_fmt[4:], privkey_bin)
 
+    def _init_cryptors(self):
+        self.pubCryptor = crypto_util.Cryptor(pubkey_hex=self.pubkey_hex)
+        self.privCryptor = crypto_util.Cryptor(privkey_hex=self.privkey_hex)
+        self.dualCryptor = crypto_util.Cryptor(
+            pubkey_hex=self.pubkey_hex,
+            privkey_hex=self.privkey_hex
+        )
 
-class TestPubCryptor(unittest.TestCase):
+    def test_init(self):
+        self._init_cryptors()
+        self.assertFalse(self.pubCryptor.has_privkey)
+        self.assertTrue(self.privCryptor.has_privkey)
+        self.assertTrue(self.dualCryptor.has_privkey)
+        self.assertRaises(ValueError, crypto_util.Cryptor)
 
-    def test_encrypt(self):
-        pass
+    def test_get_pubkey(self):
+        self._init_cryptors()
+        self.assertEqual(self.pubCryptor.get_pubkey(), self.pubkey_bin)
+        self.assertEqual(self.privCryptor.get_pubkey(), self.pubkey_bin)
+        self.assertEqual(self.dualCryptor.get_pubkey(), self.pubkey_bin)
 
-    def test_verify(self):
-        pass
+    def test_get_privkey(self):
+        self._init_cryptors()
+        self.assertIsNone(self.pubCryptor.get_privkey())
+        self.assertEqual(self.privCryptor.get_privkey(), self.privkey_bin)
+        self.assertEqual(self.dualCryptor.get_privkey(), self.privkey_bin)
 
-    def test_decrypt(self):
-        # Test that attempt to decrypt will fail
-        pass
+    def test_encrypt_decrypt(self):
+        self._init_cryptors()
 
-    def test_sign(self):
-        # Test that attempt to sign will fail
-        pass
+        ciphertext1 = self.pubCryptor.encrypt(self.plaintext)
+        ciphertext2 = self.privCryptor.encrypt(self.plaintext)
+        ciphertext3 = self.dualCryptor.encrypt(self.plaintext)
 
+        self.assertRaises(
+            RuntimeError,
+            self.pubCryptor.decrypt,
+            ciphertext1
+        )
+        self.assertEqual(self.plaintext, self.privCryptor.decrypt(ciphertext1))
+        self.assertEqual(self.plaintext, self.privCryptor.decrypt(ciphertext2))
+        self.assertEqual(self.plaintext, self.privCryptor.decrypt(ciphertext3))
 
-class TestPrivCryptor(TestPubCryptor):
+        self.assertEqual(self.plaintext, self.dualCryptor.decrypt(ciphertext1))
+        self.assertEqual(self.plaintext, self.dualCryptor.decrypt(ciphertext2))
+        self.assertEqual(self.plaintext, self.dualCryptor.decrypt(ciphertext3))
 
-    def test_decrypt(self):
-        pass
+        bad_ciphertext = ciphertext1[:-4] + "0123"
+        self.assertRaises(
+            RuntimeError, self.privCryptor.decrypt, bad_ciphertext
+        )
+        self.assertRaises(
+            RuntimeError, self.dualCryptor.decrypt, bad_ciphertext
+        )
 
-    def test_sign(self):
-        pass
+    def test_sign_verify(self):
+        self._init_cryptors()
+
+        plain_sig1 = self.privCryptor.sign(self.plaintext)
+        plain_sig2 = self.dualCryptor.sign(self.plaintext)
+        self.assertRaises(
+            RuntimeError,
+            self.pubCryptor.sign,
+            self.plaintext
+        )
+
+        ciphertext = self.pubCryptor.encrypt(self.plaintext)
+        crypto_sig1 = self.privCryptor.sign(ciphertext)
+        crypto_sig2 = self.dualCryptor.sign(ciphertext)
+
+        self.assertTrue(self.pubCryptor.verify(plain_sig1, self.plaintext))
+        self.assertTrue(self.pubCryptor.verify(plain_sig2, self.plaintext))
+        self.assertTrue(self.pubCryptor.verify(crypto_sig1, ciphertext))
+        self.assertTrue(self.pubCryptor.verify(crypto_sig2, ciphertext))
+
+        self.assertTrue(self.privCryptor.verify(plain_sig1, self.plaintext))
+        self.assertTrue(self.privCryptor.verify(plain_sig2, self.plaintext))
+        self.assertTrue(self.privCryptor.verify(crypto_sig1, ciphertext))
+        self.assertTrue(self.privCryptor.verify(crypto_sig2, ciphertext))
+
+        self.assertTrue(self.dualCryptor.verify(plain_sig1, self.plaintext))
+        self.assertTrue(self.dualCryptor.verify(plain_sig2, self.plaintext))
+        self.assertTrue(self.dualCryptor.verify(crypto_sig1, ciphertext))
+        self.assertTrue(self.dualCryptor.verify(crypto_sig2, ciphertext))
 
 
 if __name__ == "__main__":
