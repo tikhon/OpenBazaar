@@ -6,36 +6,63 @@ BTC_CURVE_OPENSSL_ID_HEX = '{:0>4x}'.format(ec.OpenSSL.get_curve(BTC_CURVE))
 BTC_EC_POINT_LENGTH = 32
 BTC_EC_POINT_LENGTH_HEX = '{:0>4x}'.format(BTC_EC_POINT_LENGTH)
 
-def pubkey_to_pyelliptic(pubkey):
-    # Strip 04
-    pubkey = pubkey[2:]
 
-    # Split it in half
-    pub_x = pubkey[0:len(pubkey) / 2]
-    pub_y = pubkey[len(pubkey) / 2:]
+def pubkey_to_pyelliptic(pubkey_hex):
+    """
+    Convert a hex BTC public key into a format suitable for pyelliptic.
 
-    # Add pyelliptic content
-    print "02ca0020" + pub_x + "0020" + pub_y
-    return "02ca0020" + pub_x + "0020" + pub_y
+    @param pubkey_hex: Uncompressed BTC public key in hex format.
+    @type pubkey_hex: str or unicode
+
+    @return: A pyelliptic-compatible binary key.
+    @rtype: str
+    """
+    # Strip the '04' prefix.
+    pubkey_hex_strip = pubkey_hex[2:]
+
+    # Add curve ID and key length.
+    pubkey_hex_fmt = "".join((
+        BTC_CURVE_OPENSSL_ID_HEX,
+        BTC_EC_POINT_LENGTH_HEX, pubkey_hex_strip[:2 * BTC_EC_POINT_LENGTH],
+        BTC_EC_POINT_LENGTH_HEX, pubkey_hex_strip[2 * BTC_EC_POINT_LENGTH:],
+    ))
+
+    # Convert to binary and return.
+    len_key_bin = len(pubkey_hex_fmt) // 2
+    return arithmetic.changebase(pubkey_hex_fmt, 16, 256, minlen=len_key_bin)
+
+
+def privkey_to_pyelliptic(privkey_hex):
+    """
+    Convert a hex BTC private key into a format suitable for pyelliptic.
+
+    @param privkey_hex: Compressed BTC private key in hex format.
+    @type privkey_hex: str or unicode
+
+    @return: A pyelliptic-compatible binary key.
+    @rtype: str
+    """
+    # Add curve ID and key length.
+    privkey_hex_fmt = "".join((
+        BTC_CURVE_OPENSSL_ID_HEX,
+        BTC_EC_POINT_LENGTH_HEX,
+        privkey_hex
+    ))
+
+    # Convert to binary and return.
+    len_key_bin = len(privkey_hex_fmt) // 2
+    return arithmetic.changebase(privkey_hex_fmt, 16, 256, minlen=len_key_bin)
 
 
 def makePrivCryptor(privkey_hex):
-    privkey_bin = '\x02\xca\x00 ' + arithmetic.changebase(privkey_hex,
-                                                          16, 256, minlen=32)
+    """FILLME"""
     pubkey_hex = arithmetic.privkey_to_pubkey(privkey_hex)
-    pubkey_bin_bare = arithmetic.changebase(pubkey_hex, 16, 256, minlen=65)[1:]
-    pubkey_bin = ('\x02\xca\x00 ' + pubkey_bin_bare[:32] + '\x00 ' +
-                  pubkey_bin_bare[32:])
-    cryptor = ec.ECC(curve='secp256k1', privkey=privkey_bin, pubkey=pubkey_bin)
-    return cryptor
+    pubkey_bin = pubkey_to_pyelliptic(pubkey_hex)
+    privkey_bin = privkey_to_pyelliptic(privkey_hex)
+    return ec.ECC(curve=BTC_CURVE, privkey=privkey_bin, pubkey=pubkey_bin)
 
 
-def makePubCryptor(pubkey):
-    pubkey_bin = hexToPubkey(pubkey)
-    return ec.ECC(curve='secp256k1', pubkey=pubkey_bin)
-
-
-def hexToPubkey(pubkey):
-    pubkey_raw = arithmetic.changebase(pubkey[2:], 16, 256, minlen=64)
-    pubkey_bin = '\x02\xca\x00 ' + pubkey_raw[:32] + '\x00 ' + pubkey_raw[32:]
-    return pubkey_bin
+def makePubCryptor(pubkey_hex):
+    """FILLME"""
+    pubkey_bin = pubkey_to_pyelliptic(pubkey_hex)
+    return ec.ECC(curve=BTC_CURVE, pubkey=pubkey_bin)

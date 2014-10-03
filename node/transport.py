@@ -406,7 +406,7 @@ class CryptoTransportLayer(TransportLayer):
                 self._generate_new_bitmessage_address()
 
         self._myself = ec.ECC(
-            pubkey=pubkey_to_pyelliptic(self.pubkey).decode('hex'),
+            pubkey=pubkey_to_pyelliptic(self.pubkey),
             raw_privkey=self.secret.decode('hex'),
             curve=BTC_CURVE
         )

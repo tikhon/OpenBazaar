@@ -14,7 +14,7 @@ from zmq.eventloop import ioloop, zmqstream
 
 import constants
 from crypto_util import (
-    BTC_CURVE, makePubCryptor, hexToPubkey, makePrivCryptor, pubkey_to_pyelliptic
+    BTC_CURVE, makePubCryptor, makePrivCryptor, pubkey_to_pyelliptic
 )
 from guid import GUIDMixin
 import network_util
@@ -178,8 +178,8 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
         @raises Exception: The encryption failed.
         """
         assert self.pub, "Attempt to encrypt without key."
-        hexkey = hexToPubkey(self.pub)
-        return ec.ECC.encrypt(data, hexkey)
+        pubkey_bin = pubkey_to_pyelliptic(self.pub)
+        return ec.ECC.encrypt(data, pubkey_bin)
 
     def send(self, data, callback=lambda msg: None):
 
@@ -337,7 +337,7 @@ class CryptoPeerListener(PeerListener):
         # this was copied as is from CryptoTransportLayer
         # soon all crypto code will be refactored and this will be removed
         self._myself = ec.ECC(
-            pubkey=pubkey_to_pyelliptic(self.pubkey).decode('hex'),
+            pubkey=pubkey_to_pyelliptic(self.pubkey),
             raw_privkey=self.secret.decode('hex'),
             curve=BTC_CURVE
         )
