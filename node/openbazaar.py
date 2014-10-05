@@ -6,9 +6,11 @@ import os
 import sys
 import argparse
 import multiprocessing
+import psutil
 from openbazaar_daemon import node_starter
 from setup_db import setup_db
 from network_util import init_aditional_STUN_servers, check_NAT_status
+from threading import Thread
 
 
 def get_defaults():
@@ -471,6 +473,30 @@ def start(arguments):
     p.start()
 
 
+def terminate_or_kill_process(process):
+    try:
+        process.terminate()  # in POSIX, sends SIGTERM.
+        process.wait(5)
+    except psutil.TimeoutExpired:
+        _, alive = psutil.wait_procs([process], None, None)
+        if process in alive:
+            process.kill()  # sends KILL signal.
+
+
+def stop():
+    my_pid = os.getpid()  # don't kill the killer.
+    for process in psutil.process_iter():
+        try:
+            pdict = process.as_dict()
+            if my_pid != int(pdict['pid']) and pdict['cmdline'] is not None:
+                cmd = ' '.join(pdict['cmdline'])
+                if cmd.find('openbazaar') > -1 and cmd.find('start') > -1:
+                    Thread(target=terminate_or_kill_process,
+                           args=(process,)).start()
+        except psutil.NoSuchProcess:
+            pass
+
+
 def load_config_file_arguments(parser):
     """Loads config file's flags into sys.argv for further argument parsing."""
     parsed_arguments = parser.parse_args()
@@ -480,7 +506,9 @@ def load_config_file_arguments(parser):
             try:
                 config_file_lines = fp.readlines()
             except Exception as e:
-                print "notice: ignored invalid config file:", parsed_arguments.config_file
+                print "notice: ignored invalid config file: %s" % (
+                    parsed_arguments.config_file
+                )
                 print e
                 return
 
@@ -522,7 +550,7 @@ def main():
     if arguments.command == 'start':
         start(arguments)
     elif arguments.command == 'stop':
-        pass
+        stop()
     elif arguments.command == 'status':
         pass
     else:
