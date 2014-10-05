@@ -140,7 +140,8 @@ class Obdb(object):
         if lastrowid:
             return lastrowid
 
-    def selectEntries(self, table, where_dict=None, operator="AND", order_field="id", order="ASC", limit=None, limit_offset=None, select_fields="*"):
+    def selectEntries(self, table, where_dict=None, operator="AND", order_field="id",
+                      order="ASC", limit=None, limit_offset=None, select_fields="*"):
         """
         A wrapper for the SQL SELECT operation. It will always return all the
         attributes for the selected rows.

@@ -412,8 +412,9 @@ class DHT(object):
                 # until it expires, without changing the metadata associated with it
                 # First, check if the data has expired
                 if age >= constants.dataExpireTimeout:
-                    # This key/value pair has expired (and it has not been republished by the original publishing node
-                    # - remove it
+                    # This key/value pair has expired and has not been
+                    # republished by the original publishing node,
+                    # so remove it.
                     expiredKeys.append(key)
                 elif now - self.dataStore.lastPublished(key) >= constants.replicateInterval:
                     self.iterativeStore(key, self.dataStore[key], originalPublisherID, age)
@@ -463,9 +464,13 @@ class DHT(object):
         self.log.debug('Short list after: %s', search.shortlist)
 
     def find_listings(self, transport, key, listingFilter=None, callback=None):
-        """ Send a get product listings call to the node in question and then cache those listings locally
-        TODO: Ideally we would want to send an array of listing IDs that we have locally and then the node would
-        send back the missing or updated listings. This would save on queries for listings we already have.
+        """
+        Send a get product listings call to the node in question and
+        then cache those listings locally.
+        TODO: Ideally we would want to send an array of listing IDs that
+        we have locally and then the node would send back the missing or
+        updated listings. This would save on queries for listings we
+        already have.
         """
 
         peer = self.routingTable.getContact(key)
@@ -484,10 +489,6 @@ class DHT(object):
 
         self.iterativeFindValue(listing_index_key, callback)
 
-        # Find appropriate storage nodes and save key value
-        # self.iterativeFindNode(key, lambda msg, key=key, value=value, originalPublisherID=originalPublisherID,
-        # age=age: self.storeKeyValue(msg, key, value, originalPublisherID, age))
-
     def find_listings_by_keyword(self, transport, keyword, listingFilter=None, callback=None):
 
         hashvalue = hashlib.new('ripemd160')
@@ -498,10 +499,6 @@ class DHT(object):
         self.log.info('Finding contracts for keyword: %s', keyword)
 
         self.iterativeFindValue(listing_index_key, callback)
-
-        # Find appropriate storage nodes and save key value
-        # self.iterativeFindNode(key, lambda msg, key=key, value=value, originalPublisherID=originalPublisherID,
-        # age=age: self.storeKeyValue(msg, key, value, originalPublisherID, age))
 
     def iterativeStore(self, key, value_to_store=None, originalPublisherID=None, age=0):
         """ The Kademlia store operation
@@ -525,12 +522,11 @@ class DHT(object):
         # Find appropriate storage nodes and save key value
         if value_to_store:
             self.log.debug('Value to store: %s %s', key, value_to_store)
-            self.iterativeFindNode(key, lambda msg, findKey=key, value=value_to_store,
-                                   originalPublisherID=originalPublisherID, age=age: self.storeKeyValue(msg,
-                                                                                                        findKey,
-                                                                                                        value,
-                                                                                                        originalPublisherID,
-                                                                                                        age))
+            self.iterativeFindNode(
+                key,
+                lambda msg, findKey=key, value=value_to_store, originalPublisherID=originalPublisherID, age=age:
+                    self.storeKeyValue(msg, findKey, value, originalPublisherID, age)
+            )
 
     def storeKeyValue(self, nodes, key, value, originalPublisherID, age):
 
@@ -598,7 +594,9 @@ class DHT(object):
         originallyPublished = now - age
 
         # Store it in your own node
-        self.dataStore.setItem(key, value, now, originallyPublished, originalPublisherID, market_id=self.market_id)
+        self.dataStore.setItem(
+            key, value, now, originallyPublished, originalPublisherID, market_id=self.market_id
+        )
 
         for node in nodes:
 
@@ -673,11 +671,15 @@ class DHT(object):
                 originalPublisherID = rpcSenderID
             else:
                 raise TypeError(
-                    'No publisher specifed, and RPC caller ID not available. Data requires an original publisher.')
+                    'No publisher specifed, and RPC caller ID not available.'
+                    'Data requires an original publisher.'
+                )
 
         now = int(time.time())
         originallyPublished = now - age
-        self.dataStore.setItem(key, value, now, originallyPublished, originalPublisherID, market_id=self.market_id)
+        self.dataStore.setItem(
+            key, value, now, originallyPublished, originalPublisherID, market_id=self.market_id
+        )
         return 'OK'
 
     def iterativeFindNode(self, key, callback=None):
@@ -753,11 +755,6 @@ class DHT(object):
         new_search.slowNodeCount[0] = len(new_search.active_probes)
 
         # Sort shortlist from closest to farthest
-        # self.activePeers.sort(lambda firstContact, secondContact, targetKey=key: cmp(self.routingTable.distance(firstContact.guid,
-        # targetKey), self.routingTable.distance(secondContact.guid, targetKey)))
-        # new_search.shortlist.sort(lambda firstContact, secondContact, targetKey=key: cmp(self.routingTable.distance(firstContact.guid,
-        # targetKey), self.routingTable.distance(secondContact.guid, targetKey)))
-
         self.activePeers.sort(lambda firstNode, secondNode, targetKey=new_search.key: cmp(
             self.routingTable.distance(firstNode.guid, targetKey),
             self.routingTable.distance(secondNode.guid, targetKey)))

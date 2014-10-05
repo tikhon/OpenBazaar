@@ -284,9 +284,6 @@ class CryptoTransportLayer(TransportLayer):
 
         # Update query
         self.db.deleteEntries("peers", {"uri": uri, "guid": guid}, "OR")
-        # if len(results) > 0:
-        #     self.db.updateEntries("peers", {"id": results[0]['id']}, {"market_id": self.market_id, "uri": uri, "pubkey": pubkey, "guid": guid, "nickname": nickname})
-        # else:
         if guid is not None:
             self.db.insertEntry("peers", {
                 "uri": uri,
@@ -308,7 +305,10 @@ class CryptoTransportLayer(TransportLayer):
                 '[_connect_to_bitmessage] Connecting to Bitmessage on port %s',
                 bm_port
             )
-            self.bitmessage_api = xmlrpclib.ServerProxy("http://{}:{}@localhost:{}/".format(bm_user, bm_pass, bm_port), verbose=0)
+            self.bitmessage_api = xmlrpclib.ServerProxy(
+                "http://{}:{}@localhost:{}/".format(bm_user, bm_pass, bm_port),
+                verbose=0
+            )
             result = self.bitmessage_api.add(2, 3)
             self.log.info(
                 "[_connect_to_bitmessage] Bitmessage API is live: %s",

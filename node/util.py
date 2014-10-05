@@ -44,8 +44,12 @@ def open_default_webbrowser(url, protocol="http"):
 def osx_check_dyld_library_path():
     """This is a necessary workaround as you cannot set the DYLD_LIBRARY_PATH by the time python has started."""
     if 'DYLD_LIBRARY_PATH' not in os.environ or len(os.environ['DYLD_LIBRARY_PATH']) == 0:
-        print 'WARNING: DYLD_LIBRARY_PATH not set, this might cause issues with openssl elliptic curve cryptography and other libraries.'
-        print "It is recommended that you stop OpenBazaar and set your DYLD_LIBRARY_PATH environment variable as follows\n"
-        print 'export DYLD_LIBRARY_PATH=$(brew --prefix openssl)/lib:${DYLD_LIBRARY_PATH}', "\n"
-        print 'then restart OpenBazaar.', "\n"
+        print (
+            'WARNING: DYLD_LIBRARY_PATH not set, this might cause issues'
+            '\nwith openssl elliptic curve cryptography and other libraries.'
+            '\nIt is recommended that you stop OpenBazaar and set your'
+            '\nDYLD_LIBRARY_PATH environment variable as follows:'
+            '\n    export DYLD_LIBRARY_PATH=$(brew --prefix openssl)/lib:${DYLD_LIBRARY_PATH}'
+            '\nthen restart OpenBazaar.'
+        )
         sys.exit(1)

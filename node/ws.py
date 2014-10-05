@@ -516,7 +516,9 @@ class ProtocolHandler(object):
 
                 signatures = [multisign(tx, x, script, private_key) for x in range(len(inputs))]
 
-                self.market.release_funds_to_merchant(buyer['buyer_order_id'], tx, script, signatures, order.get('merchant'))
+                self.market.release_funds_to_merchant(
+                    buyer['buyer_order_id'], tx, script, signatures, order.get('merchant')
+                )
 
             def get_history():
                 client.fetch_history(multi_address, lambda ec, history, order=order: cb(ec, history, order))

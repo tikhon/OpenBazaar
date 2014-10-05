@@ -222,10 +222,8 @@ class Orders(object):
         # Generate QR code
         print offer_data_json
         qr = self.get_qr_code(offer_data_json['Contract']['item_title'], _order['address'], total_price)
-        merchant_bitmessage = offer_data_json.get('Seller').get('seller_Bitmessage') if 'Seller' \
-                                                                                        in offer_data_json else ""
-        buyer_bitmessage = buyer_data_json.get('Buyer').get('buyer_Bitmessage') if 'Buyer' \
-                                                                                   in buyer_data_json else ""
+        merchant_bitmessage = offer_data_json.get('Seller', '').get('seller_Bitmessage')
+        buyer_bitmessage = buyer_data_json.get('Buyer', '').get('buyer_Bitmessage')
 
         # Get order prototype object before storing
         order = {"id": _order['id'],
@@ -236,7 +234,7 @@ class Orders(object):
                  "order_id": _order.get('order_id'),
                  "item_price": _order.get('item_price'),
                  "shipping_price": _order.get('shipping_price'),
-                 "shipping_address": str(_order.get('shipping_address')) if _order.get("shipping_address") != "" else "",
+                 "shipping_address": str(_order.get('shipping_address')),
                  "total_price": total_price,
                  "merchant_bitmessage": merchant_bitmessage,
                  "buyer_bitmessage": buyer_bitmessage,
@@ -495,7 +493,9 @@ class Orders(object):
                 order_to_notary['rawContract'] = contract
                 order_to_notary['state'] = Orders.State.BID
 
-                merchant = self.transport.dht.routingTable.getContact(contract_data_json['Seller']['seller_GUID'])
+                merchant = self.transport.dht.routingTable.getContact(
+                    contract_data_json['Seller']['seller_GUID']
+                )
                 order_to_notary['merchantURI'] = merchant.address
                 order_to_notary['merchantGUID'] = merchant.guid
                 order_to_notary['merchantNickname'] = merchant.nickname
@@ -712,7 +712,10 @@ class Orders(object):
         bid_data_json = json.loads(bid_data_json)
         self.log.info('Bid Data: %s', bid_data_json)
 
-        buyer_order_id = bid_data_json['Buyer']['buyer_GUID'] + '-' + str(bid_data_json['Buyer']['buyer_order_id'])
+        buyer_order_id = "%s-%s" % (
+            bid_data_json['Buyer']['buyer_GUID'],
+            bid_data_json['Buyer']['buyer_order_id']
+        )
 
         pubkeys = [
             offer_data_json['Seller']['seller_BTC_uncompressed_pubkey'],
@@ -734,11 +737,8 @@ class Orders(object):
                 'merchant': offer_data_json['Seller']['seller_GUID'],
                 'buyer': bid_data_json['Buyer']['buyer_GUID'],
                 'address': multisig_address,
-                'item_price': offer_data_json['Contract']['item_price'] if 'item_price' in
-                                                                           offer_data_json[
-                                                                               'Contract'] else 0,
-                'shipping_price': offer_data_json['Contract']['item_delivery'][
-                    'shipping_price'] if 'shipping_price' in offer_data_json['Contract']['item_delivery'] else "",
+                'item_price': offer_data_json['Contract'].get('item_price', 0),
+                'shipping_price': offer_data_json['Contract']['item_delivery'].get('shipping_price', ""),
                 'note_for_merchant': bid_data_json['Buyer']['note_for_seller'],
                 "updated": time.time()
             }
@@ -785,7 +785,10 @@ class Orders(object):
         bid_data_json = json.loads(bid_data_json)
         self.log.info('Bid Data: %s', bid_data_json)
 
-        buyer_order_id = bid_data_json['Buyer']['buyer_GUID'] + '-' + str(bid_data_json['Buyer']['buyer_order_id'])
+        buyer_order_id = "%s-%s" % (
+            bid_data_json['Buyer']['buyer_GUID'],
+            bid_data_json['Buyer']['buyer_order_id']
+        )
 
         self.db.updateEntries("orders", {'buyer_order_id': buyer_order_id}, {'state': Orders.State.BUYER_PAID,
                                                                              'shipping_address': json.dumps(
@@ -877,7 +880,10 @@ class Orders(object):
             while len(self.db.selectEntries("orders", {"id": order_id})) > 0:
                 merchant_order_id = random.randint(0, 1000000)
 
-            buyer_id = str(bid_data_json['Buyer']['buyer_GUID']) + '-' + str(bid_data_json['Buyer']['buyer_order_id'])
+            buyer_id = "%s-%s" % (
+                bid_data_json['Buyer']['buyer_GUID'],
+                bid_data_json['Buyer']['buyer_order_id']
+            )
 
             self.db.insertEntry(
                 "orders",
@@ -894,10 +900,8 @@ class Orders(object):
                     'address': multisig_address,
                     'shipping_address': self.transport._myself.decrypt(
                         bid_data_json['Buyer']['buyer_deliveryaddr'].decode('hex')),
-                    'item_price': offer_data_json['Contract']['item_price'] if 'item_price' in offer_data_json[
-                        'Contract'] else 0,
-                    'shipping_price': offer_data_json['Contract']['item_delivery'][
-                        'shipping_price'] if 'shipping_price' in offer_data_json['Contract']['item_delivery'] else 0,
+                    'item_price': offer_data_json['Contract'].get('item_price', 0),
+                    'shipping_price': offer_data_json['Contract']['item_delivery'].get('shipping_price', 0),
                     'note_for_merchant': bid_data_json['Buyer']['note_for_seller'],
                     "updated": time.time()
                 }
@@ -925,10 +929,8 @@ class Orders(object):
                     'notary': notary_data_json['Notary']['notary_GUID'],
                     'address': multisig_address,
                     'shipping_address': json.dumps(self.get_shipping_address()),
-                    'item_price': offer_data_json['Contract']['item_price'] if 'item_price' in offer_data_json[
-                        'Contract'] else 0,
-                    'shipping_price': offer_data_json['Contract']['item_delivery'][
-                        'shipping_price'] if 'shipping_price' in offer_data_json['Contract']['item_delivery'] else "",
+                    'item_price': offer_data_json['Contract'].get('item_price', 0),
+                    'shipping_price': offer_data_json['Contract']['item_delivery'].get('shipping_price', ''),
                     'note_for_merchant': bid_data_json['Buyer']['note_for_seller'],
                     "updated": time.time()
                 }

@@ -91,11 +91,15 @@ class Backup(json.JSONEncoder):
         self.size_in_bytes = size_in_bytes
 
     def __str__(self):
-        return '{ "file_name": "%s", "full_file_path": "%s", "created_timestamp_millis": %d, "size_in_bytes": %d}' % \
-            (self.file_name,
-             self.full_file_path,
-             long(self.created_timestamp_millis),
-             long(self.size_in_bytes))
+        return (
+            '{ "file_name": "%s", "full_file_path": "%s",'
+            '"created_timestamp_millis": %d, "size_in_bytes": %d}' % (
+                self.file_name,
+                self.full_file_path,
+                long(self.created_timestamp_millis),
+                long(self.size_in_bytes)
+            )
+        )
 
     def __dict__(self):
         return {"file_name": self.file_name,
