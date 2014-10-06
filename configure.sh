@@ -46,7 +46,7 @@ function installMac {
   #print commands (useful for debugging)
   #set -x  #disabled because the echos and stdout are verbose enough to see progress
 
-  #install brew if it is not installed, otherwise upgrade it
+  # install brew if it is not installed, otherwise upgrade it
   if ! command_exists brew ; then
     echo "installing brew..."
     ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
@@ -58,7 +58,7 @@ function installMac {
     brew prune
   fi
   
-  #install gpg/sqlite3/python/wget if they aren't installed
+  # install gpg/sqlite3/python/wget if they aren't installed
   for dep in gpg sqlite3 python wget
   do
     if ! command_exists $dep ; then
@@ -66,32 +66,24 @@ function installMac {
     fi
   done
 
-  #more brew prerequisites
+  # more brew prerequisites
   brew install openssl zmq
 
-  #python prerequisites
-  #python may be owned by root, or it may be owned by the user
-  PYTHON_OWNER=$(stat -n -f %u `which python`)
-  if [ "$PYTHON_OWNER" == "0" ]; then
-    #root owns python
-    EASY_INSTALL="sudo easy_install"
-    PIP="sudo pip"
-  else
-    EASY_INSTALL="easy_install"
-    PIP="pip"
-  fi
+  # python prerequisites
+  EASY_INSTALL="./env/bin/easy_install"
+  PIP="./env/bin/pip"
 
-  #install pip if it is not installed
-  if ! command_exists pip ; then
+  # install pip if it is not installed
+  if ! command_exists $PIP ; then
     $EASY_INSTALL pip
   fi
 
-  #install python's virtualenv if it is not installed
+  # install python's virtualenv if it is not installed
   if ! command_exists virtualenv ; then
     $PIP install virtualenv
   fi
 
-  #create a virtualenv for OpenBazaar
+  # create a virtualenv for OpenBazaar
   if [ ! -d "./env" ]; then
     virtualenv env
   fi

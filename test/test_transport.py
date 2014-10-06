@@ -1,8 +1,32 @@
 import unittest
-
+from node.openbazaar_daemon import OpenBazaarContext
 import mock
 
 from node import protocol, transport
+
+
+def get_mock_open_bazaar_context():
+    return OpenBazaarContext(None,
+                             my_market_ip='localhost',
+                             my_market_port=12345,
+                             http_ip='localhost',
+                             http_port=-1,
+                             db_path='db/ob.db',
+                             log_path=None,
+                             log_level=10,
+                             market_id=1,
+                             bm_user=None,
+                             bm_pass=None,
+                             bm_port=-1,
+                             seed_peers=[],
+                             seed_mode=False,
+                             dev_mode=False,
+                             dev_nodes=-1,
+                             disable_upnp=True,
+                             disable_stun_check=True,
+                             disable_open_browser=True,
+                             disable_sqlite_crypt=False,
+                             enable_ip_checker=False)
 
 
 class TestTransportLayerCallbacks(unittest.TestCase):
@@ -17,7 +41,11 @@ class TestTransportLayerCallbacks(unittest.TestCase):
         self.validator2 = mock.Mock()
         self.validator3 = mock.Mock()
 
-        self.tl = transport.TransportLayer(1, 'localhost', None, 1)
+        ob_ctx = get_mock_open_bazaar_context()
+        guid = 1
+        nickname = None
+
+        self.tl = transport.TransportLayer(ob_ctx, guid, nickname)
         self.tl.add_callback('section_one', {'cb': self.callback1, 'validator_cb': self.validator1})
         self.tl.add_callback('section_one', {'cb': self.callback2, 'validator_cb': self.validator2})
         self.tl.add_callback('all', {'cb': self.callback3, 'validator_cb': self.validator3})
@@ -57,7 +85,10 @@ class TestTransportLayerCallbacks(unittest.TestCase):
 class TestTransportLayerMessageHandling(unittest.TestCase):
 
     def setUp(self):
-        self.tl = transport.TransportLayer(1, 'localhost', None, 1)
+        ob_ctx = get_mock_open_bazaar_context()
+        guid = 1
+        nickname = None
+        self.tl = transport.TransportLayer(ob_ctx, guid, nickname)
 
     def test_on_message_ok(self):
         """OK message should trigger no callbacks."""
@@ -93,7 +124,11 @@ class TestTransportLayerMessageHandling(unittest.TestCase):
 class TestTransportLayerProfile(unittest.TestCase):
 
     def test_get_profile(self):
-        tl = transport.TransportLayer(1, '1.1.1.1', 12345, 1)
+        ob_ctx = get_mock_open_bazaar_context()
+        ob_ctx.my_market_ip = '1.1.1.1'
+        guid = 1
+        nickname = None
+        tl = transport.TransportLayer(ob_ctx, guid, nickname)
         self.assertEqual(
             tl.get_profile(),
             protocol.hello_request({

@@ -1,4 +1,10 @@
 import webbrowser
+import platform
+
+
+def is_mac():
+    os_name = platform.uname()[0]
+    return os_name == 'Darwin'
 
 
 def open_default_webbrowser(url, protocol="http"):
