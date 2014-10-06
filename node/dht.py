@@ -8,8 +8,9 @@ import logging
 import os
 import routingtable
 import time
-import socket
 from threading import Thread
+
+import network_util
 
 
 class DHT(object):
@@ -580,17 +581,9 @@ class DHT(object):
         )
 
         for node in nodes:
-
             self.log.debug('Sending data to store in DHT: %s', node)
-
-            try:
-                socket.inet_pton(socket.AF_INET6, node[0])
-                uri = 'tcp://[%s]:%s' % (node[0], node[1])
-            except (socket.error, ValueError):
-                uri = 'tcp://%s:%s' % (node[0], node[1])
-
+            uri = network_util.get_peer_url(node[0], node[1])
             guid = node[2]
-
             peer = self.routingTable.getContact(guid)
 
             if guid == self.transport.guid:
