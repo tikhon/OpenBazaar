@@ -1,12 +1,20 @@
 # ######## KADEMLIA CONSTANTS ###########
 
+BIT_NODE_ID_LEN = 160
+HEX_NODE_ID_LEN = BIT_NODE_ID_LEN // 4
+
 # Small number representing the degree of
 # parallelism in network calls
 alpha = 3
 
 # Maximum number of contacts stored in a bucket
-# NOTE: Should be an even number
+# NOTE: Should be an even number.
 k = 80
+
+# Maximum number of contacts stored in the
+# replacement cache of a bucket
+# NOTE: Should be an even number.
+cache_k = 80
 
 # Timeout for network operations
 # [seconds]
