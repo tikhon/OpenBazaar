@@ -81,34 +81,11 @@ class TransportLayer(object):
     def get_profile(self):
         return hello_request({'uri': self.uri})
 
-    def closed(self, *args):
-        self.log.info("client left")
-
     def _init_peer(self, msg):
         uri = msg['uri']
 
         if uri not in self.peers:
             self.peers[uri] = connection.PeerConnection(self, uri)
-
-    def remove_peer(self, uri, guid):
-        self.log.info("Removing peer %s", uri)
-        ip = urlparse(uri).hostname
-        port = urlparse(uri).port
-        if (ip, port, guid) in self.shortlist:
-            self.shortlist.remove((ip, port, guid))
-
-        self.log.info('Removed')
-
-        # try:
-        # del self.peers[uri]
-        # msg = {
-        # 'type': 'peer_remove',
-        # 'uri': uri
-        #     }
-        #     self.trigger_callbacks(msg['type'], msg)
-        #
-        # except KeyError:
-        #     self.log.info("Peer %s was already removed", uri)
 
     def send(self, data, send_to=None, callback=lambda msg: None):
 
@@ -165,7 +142,6 @@ class TransportLayer(object):
 
         # if not self.routingTable.getContact(msg['senderGUID']):
         # Add to contacts if doesn't exist yet
-        # self._addCryptoPeer(msg['uri'], msg['senderGUID'], msg['pubkey'])
         if msg['type'] != 'ok':
             self.trigger_callbacks(msg['type'], msg)
 
@@ -348,23 +324,11 @@ class CryptoTransportLayer(TransportLayer):
             #     self._bitmessage_api = None
         return result
 
-    def _checkok(self, msg):
-        self.log.info('Check ok')
-
-    def get_guid(self):
-        return self.guid
-
     def get_dht(self):
         return self.dht
 
-    def get_bitmessage_api(self):
-        return self.bitmessage_api
-
     def get_market_id(self):
         return self.market_id
-
-    # def get_myself(self):
-    #     return self._myself
 
     def validate_on_hello(self, msg):
         self.log.debug('Validating ping message.')
@@ -574,39 +538,6 @@ class CryptoTransportLayer(TransportLayer):
                                                pubkey,
                                                guid=guid,
                                                nickname=nickname)
-
-    def addCryptoPeer(self, peer_to_add):
-
-        foundOutdatedPeer = False
-        for idx, peer in enumerate(self.dht.activePeers):
-
-            if (peer.address, peer.guid, peer.pub) == \
-               (peer_to_add.address, peer_to_add.guid, peer_to_add.pub):
-                self.log.info('Found existing peer, not adding.')
-                return
-
-            if peer.guid == peer_to_add.guid or \
-               peer.pub == peer_to_add.pub or \
-               peer.address == peer_to_add.address:
-
-                foundOutdatedPeer = True
-                self.log.info('Found an outdated peer')
-
-                # Update existing peer
-                self.activePeers[idx] = peer_to_add
-                self.dht.add_peer(self,
-                                  peer_to_add.address,
-                                  peer_to_add.pub,
-                                  peer_to_add.guid,
-                                  peer_to_add.nickname)
-
-        if not foundOutdatedPeer and peer_to_add.guid != self.guid:
-            self.log.info('Adding crypto peer at %s' % peer_to_add.nickname)
-            self.dht.add_peer(self,
-                              peer_to_add.address,
-                              peer_to_add.pub,
-                              peer_to_add.guid,
-                              peer_to_add.nickname)
 
     def get_profile(self):
         peers = {}
