@@ -24,7 +24,6 @@ class PeerConnection(object):
         self.transport = transport
         self.address = address
         self.nickname = nickname
-        self.responses_received = {}
 
         # Establishing a ZeroMQ stream object
         self.ctx = transport.ctx
@@ -58,35 +57,25 @@ class PeerConnection(object):
     def send(self, data, callback):
         self.send_raw(json.dumps(data), callback)
 
-    def send_raw(self, serialized, callback=lambda msg: None):
-
+    def send_raw(self, serialized, callback=None):
         compressed_data = zlib.compress(serialized, 9)
+        self.stream.send(compressed_data)
 
-        try:
-
-            self.stream.send(compressed_data)
-
-            def cb(stream, msg):
+        def cb(stream, msg):
+            try:
                 response = json.loads(msg[0])
-                self.log.debug('[send_raw] %s', pformat(response))
+            except ValueError:
+                self.log.error('[send_raw] Bad JSON response: %s', msg[0])
+                return
+            self.log.debug('[send_raw] %s', pformat(response))
 
-                # Update active peer info
+            # Update active peer info
+            self.nickname = response.get('senderNick', self.nickname)
+            if callback is not None:
+                self.log.debug('%s', msg)
+                callback(msg)
 
-                if 'senderNick' in response and\
-                   response['senderNick'] != self.nickname:
-                    self.nickname = response['senderNick']
-
-                if callback is not None:
-                    self.log.debug('%s', msg)
-                    callback(msg)
-
-            self.stream.on_recv_stream(cb)
-
-        except Exception as e:
-            self.log.error(e)
-            # Shouldn't we raise the exception here?
-            # I think not doing this could cause buggy behavior on top.
-            raise
+        self.stream.on_recv_stream(cb)
 
 
 class CryptoPeerConnection(GUIDMixin, PeerConnection):
@@ -105,45 +94,45 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
         self.port = url.port
 
         self.sin = sin
-        self._peer_alive = False  # unused; might remove later if unnecessary
         self.address = "tcp://%s:%s" % (self.ip, self.port)
 
     def start_handshake(self, handshake_cb=None):
-
         def cb(msg, handshake_cb=None):
-            if msg:
+            if not msg:
+                return
 
-                self.log.debug('ALIVE PEER %s', msg[0])
-                msg = msg[0]
+            self.log.debug('ALIVE PEER %s', msg[0])
+            msg = msg[0]
+            try:
                 msg = json.loads(msg)
+            except ValueError:
+                self.log.error('[start_handshake] Bad JSON response: %s', msg)
+                return
 
-                # Update Information
-                self.guid = msg['senderGUID']
-                self.sin = self.generate_sin(self.guid)
-                self.pub = msg['pubkey']
-                self.nickname = msg['senderNick']
+            # Update Information
+            self.guid = msg['senderGUID']
+            self.sin = self.generate_sin(self.guid)
+            self.pub = msg['pubkey']
+            self.nickname = msg['senderNick']
 
-                self._peer_alive = True
+            # Add this peer to active peers list
+            for idx, peer in enumerate(self.transport.dht.activePeers):
+                if peer.guid == self.guid or peer.address == self.address:
+                    self.transport.dht.activePeers[idx] = self
+                    self.transport.dht.add_peer(
+                        self.transport,
+                        self.address,
+                        self.pub,
+                        self.guid,
+                        self.nickname
+                    )
+                    return
 
-                # Add this peer to active peers list
-                for idx, peer in enumerate(self.transport.dht.activePeers):
-                    if peer.guid == self.guid or\
-                       peer.address == self.address:
-                        self.transport.dht.activePeers[idx] = self
-                        self.transport.dht.add_peer(
-                            self.transport,
-                            self.address,
-                            self.pub,
-                            self.guid,
-                            self.nickname
-                        )
-                        return
+            self.transport.dht.activePeers.append(self)
+            self.transport.dht.routingTable.addContact(self)
 
-                self.transport.dht.activePeers.append(self)
-                self.transport.dht.routingTable.addContact(self)
-
-                if handshake_cb is not None:
-                    handshake_cb()
+            if handshake_cb is not None:
+                handshake_cb()
 
         self.send_raw(
             json.dumps({
@@ -178,45 +167,41 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
         cryptor = Cryptor(pubkey_hex=self.pub)
         return cryptor.encrypt(data)
 
-    def send(self, data, callback=lambda msg: None):
+    def send(self, data, callback=None):
+        assert self.guid, 'Uninitialized own guid'
 
-        if hasattr(self, 'guid'):
-            # Include sender information and version
-            data['guid'] = self.guid
-            data['senderGUID'] = self.transport.guid
-            data['uri'] = self.transport.uri
-            data['pubkey'] = self.transport.pubkey
-            data['senderNick'] = self.transport.nickname
-            data['v'] = constants.VERSION
+        if not self.pub:
+            self.log.warn('There is no public key for encryption')
+            return
 
-            self.log.debug(
-                'Sending to peer: %s %s',
-                self.ip, pformat(data)
+        # Include sender information and version
+        data['guid'] = self.guid
+        data['senderGUID'] = self.transport.guid
+        data['uri'] = self.transport.uri
+        data['pubkey'] = self.transport.pubkey
+        data['senderNick'] = self.transport.nickname
+        data['v'] = constants.VERSION
+
+        self.log.debug('Sending to peer: %s %s', self.ip, pformat(data))
+
+        jdata = json.dumps(data)
+        try:
+            cipher_data = self.encrypt(jdata)
+            signature = self.sign(jdata)
+        except Exception as e:
+            self.log.error('Encryption failed. %s', e)
+            return
+
+        try:
+            self.send_raw(
+                json.dumps({
+                    'sig': signature.encode('hex'),
+                    'data': cipher_data.encode('hex')
+                }),
+                callback
             )
-
-            if self.pub == '':
-                self.log.info('There is no public key for encryption')
-            else:
-                signature = self.sign(json.dumps(data))
-
-                try:
-                    data = self.encrypt(json.dumps(data))
-                except Exception as e:
-                    self.log.error('Encryption failed. %s', e)
-                    return
-
-                try:
-                    self.send_raw(
-                        json.dumps({
-                            'sig': signature.encode('hex'),
-                            'data': data.encode('hex')
-                        }),
-                        callback
-                    )
-                except Exception as e:
-                    self.log.error("Was not able to encode empty data: %s", e)
-        else:
-            self.log.error('Cannot send to peer')
+        except Exception as e:
+            self.log.error("Was not able to encode empty data: %s", e)
 
     def peer_to_tuple(self):
         return self.ip, self.port, self.guid
@@ -280,13 +265,11 @@ class PeerListener(object):
                         "\n\t$ sudo ifconfig lo0 alias 127.0.0.2",
                         "\n\n")
                 raise Exception(error_message)
-
+        elif '[' in self.ip:
+            self.socket.ipv6 = True
+            self.socket.bind('tcp://[*]:%s' % self.port)
         else:
-            if self.ip.find('[') != -1:
-                self.socket.ipv6 = True
-                self.socket.bind('tcp://[*]:%s' % self.port)
-            else:
-                self.socket.bind('tcp://*:%s' % self.port)
+            self.socket.bind('tcp://*:%s' % self.port)
 
         self.stream = zmqstream.ZMQStream(
             self.socket, io_loop=ioloop.IOLoop.current()
@@ -313,12 +296,6 @@ class PeerListener(object):
             return
 
         self._data_cb(msg)
-
-    def stop(self):
-        if self.ctx:
-            print "PeerListener.stop() destroying zmq socket."
-            self.ctx.destroy(linger=None)
-            self.is_listening = False
 
 
 class CryptoPeerListener(PeerListener):

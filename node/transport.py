@@ -166,8 +166,7 @@ class TransportLayer(object):
         return True
 
     def shutdown(self):
-        if self.listener is not None:
-            self.listener.stop()
+        raise NotImplementedError
 
 
 class CryptoTransportLayer(TransportLayer):
@@ -692,16 +691,13 @@ class CryptoTransportLayer(TransportLayer):
 
     def shutdown(self):
         print "CryptoTransportLayer.shutdown()!"
-        try:
-            TransportLayer.shutdown(self)
-            print "CryptoTransportLayer.shutdown(): ZMQ sockets destroyed."
-        except Exception as e:
-            self.log.error("Transport shutdown error: " + e.message)
-
         print "Notice: explicit DHT Shutdown not implemented."
 
         try:
             self.bitmessage_api.close()
         except Exception as e:
-            # might not even be open, not much more we can do on our way out if exception thrown here.
-            self.log.error("Could not shutdown bitmessage_api's ServerProxy. " + e.message)
+            # It might not even be open; we can't do much more on our
+            # way out if exception is thrown here.
+            self.log.error(
+                "Could not shutdown bitmessage_api's ServerProxy: %s", e.message
+            )
