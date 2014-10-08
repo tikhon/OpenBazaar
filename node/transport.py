@@ -523,8 +523,7 @@ class CryptoTransportLayer(TransportLayer):
             t = Thread(target=self.dht.add_peer, args=(self, known_peer,))
             t.start()
 
-    def get_crypto_peer(self, guid=None, uri=None, pubkey=None, nickname=None,
-                        callback=None):
+    def get_crypto_peer(self, guid=None, uri=None, pubkey=None, nickname=None):
         if guid == self.guid:
             self.log.error('Cannot get CryptoPeerConnection for your own node')
             return
