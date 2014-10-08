@@ -1,31 +1,28 @@
-import connection
-from dht import DHT
-from protocol import hello_request
-from protocol import hello_response
-from protocol import goodbye
-from protocol import proto_response_pubkey
+from collections import defaultdict
+import hashlib
+import json
+import logging
+from pprint import pformat
+import random
+from threading import Thread
+import traceback
 from urlparse import urlparse
+import xmlrpclib
+
+import gnupg
+import obelisk
+import pyelliptic as ec
+from pybitcointools.main import privkey_to_pubkey, privtopub, random_key
+from pysqlcipher.dbapi2 import OperationalError, DatabaseError
 import zmq
 from zmq.eventloop import ioloop
 from zmq.eventloop.ioloop import PeriodicCallback
-from collections import defaultdict
-from pprint import pformat
-from pybitcointools.main import privkey_to_pubkey
-from pybitcointools.main import privtopub
-from pybitcointools.main import random_key
+
+import connection
 from crypto_util import pubkey_to_pyelliptic
-from pysqlcipher.dbapi2 import OperationalError, DatabaseError
-import gnupg
-import xmlrpclib
-import logging
-import pyelliptic as ec
-import json
-import traceback
-from threading import Thread
-import obelisk
+from dht import DHT
+from protocol import hello_request, hello_response, goodbye, proto_response_pubkey
 import network_util
-import random
-import hashlib
 
 
 class TransportLayer(object):
