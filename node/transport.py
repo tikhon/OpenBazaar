@@ -495,7 +495,8 @@ class CryptoTransportLayer(TransportLayer):
 
         known_peers = list(set(seed_peers)) + list(set(db_peers))
 
-        self.connect_to_peers(known_peers)
+        for known_peer in known_peers:
+            Thread(target=self.dht.add_peer, args=(self, known_peer,)).start()
 
         # TODO: This needs rethinking. Normally we can search for ourselves
         #       but because we are not connected to them quick enough this
@@ -518,10 +519,6 @@ class CryptoTransportLayer(TransportLayer):
         print 'Searching for myself'
         self.dht._iterativeFind(self.guid, self.dht.knownNodes, 'findNode')
 
-    def connect_to_peers(self, known_peers):
-        for known_peer in known_peers:
-            t = Thread(target=self.dht.add_peer, args=(self, known_peer,))
-            t.start()
 
     def get_crypto_peer(self, guid=None, uri=None, pubkey=None, nickname=None):
         if guid == self.guid:
