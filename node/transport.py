@@ -1,31 +1,28 @@
-import connection
-from dht import DHT
-from protocol import hello_request
-from protocol import hello_response
-from protocol import goodbye
-from protocol import proto_response_pubkey
+from collections import defaultdict
+import hashlib
+import json
+import logging
+from pprint import pformat
+import random
+from threading import Thread
+import traceback
 from urlparse import urlparse
+import xmlrpclib
+
+import gnupg
+import obelisk
+import pyelliptic as ec
+from pybitcointools.main import privkey_to_pubkey, privtopub, random_key
+from pysqlcipher.dbapi2 import OperationalError, DatabaseError
 import zmq
 from zmq.eventloop import ioloop
 from zmq.eventloop.ioloop import PeriodicCallback
-from collections import defaultdict
-from pprint import pformat
-from pybitcointools.main import privkey_to_pubkey
-from pybitcointools.main import privtopub
-from pybitcointools.main import random_key
+
+import connection
 from crypto_util import pubkey_to_pyelliptic
-from pysqlcipher.dbapi2 import OperationalError, DatabaseError
-import gnupg
-import xmlrpclib
-import logging
-import pyelliptic as ec
-import json
-import traceback
-from threading import Thread
-import obelisk
+from dht import DHT
+from protocol import hello_request, hello_response, goodbye, proto_response_pubkey
 import network_util
-import random
-import hashlib
 
 
 class TransportLayer(object):
@@ -84,34 +81,11 @@ class TransportLayer(object):
     def get_profile(self):
         return hello_request({'uri': self.uri})
 
-    def closed(self, *args):
-        self.log.info("client left")
-
     def _init_peer(self, msg):
         uri = msg['uri']
 
         if uri not in self.peers:
             self.peers[uri] = connection.PeerConnection(self, uri)
-
-    def remove_peer(self, uri, guid):
-        self.log.info("Removing peer %s", uri)
-        ip = urlparse(uri).hostname
-        port = urlparse(uri).port
-        if (ip, port, guid) in self.shortlist:
-            self.shortlist.remove((ip, port, guid))
-
-        self.log.info('Removed')
-
-        # try:
-        # del self.peers[uri]
-        # msg = {
-        # 'type': 'peer_remove',
-        # 'uri': uri
-        #     }
-        #     self.trigger_callbacks(msg['type'], msg)
-        #
-        # except KeyError:
-        #     self.log.info("Peer %s was already removed", uri)
 
     def send(self, data, send_to=None, callback=lambda msg: None):
 
@@ -168,7 +142,6 @@ class TransportLayer(object):
 
         # if not self.routingTable.getContact(msg['senderGUID']):
         # Add to contacts if doesn't exist yet
-        # self._addCryptoPeer(msg['uri'], msg['senderGUID'], msg['pubkey'])
         if msg['type'] != 'ok':
             self.trigger_callbacks(msg['type'], msg)
 
@@ -351,23 +324,11 @@ class CryptoTransportLayer(TransportLayer):
             #     self._bitmessage_api = None
         return result
 
-    def _checkok(self, msg):
-        self.log.info('Check ok')
-
-    def get_guid(self):
-        return self.guid
-
     def get_dht(self):
         return self.dht
 
-    def get_bitmessage_api(self):
-        return self.bitmessage_api
-
     def get_market_id(self):
         return self.market_id
-
-    # def get_myself(self):
-    #     return self._myself
 
     def validate_on_hello(self, msg):
         self.log.debug('Validating ping message.')
@@ -534,7 +495,8 @@ class CryptoTransportLayer(TransportLayer):
 
         known_peers = list(set(seed_peers)) + list(set(db_peers))
 
-        self.connect_to_peers(known_peers)
+        for known_peer in known_peers:
+            Thread(target=self.dht.add_peer, args=(self, known_peer,)).start()
 
         # TODO: This needs rethinking. Normally we can search for ourselves
         #       but because we are not connected to them quick enough this
@@ -557,13 +519,8 @@ class CryptoTransportLayer(TransportLayer):
         print 'Searching for myself'
         self.dht._iterativeFind(self.guid, self.dht.knownNodes, 'findNode')
 
-    def connect_to_peers(self, known_peers):
-        for known_peer in known_peers:
-            t = Thread(target=self.dht.add_peer, args=(self, known_peer,))
-            t.start()
 
-    def get_crypto_peer(self, guid=None, uri=None, pubkey=None, nickname=None,
-                        callback=None):
+    def get_crypto_peer(self, guid=None, uri=None, pubkey=None, nickname=None):
         if guid == self.guid:
             self.log.error('Cannot get CryptoPeerConnection for your own node')
             return
@@ -577,39 +534,6 @@ class CryptoTransportLayer(TransportLayer):
                                                pubkey,
                                                guid=guid,
                                                nickname=nickname)
-
-    def addCryptoPeer(self, peer_to_add):
-
-        foundOutdatedPeer = False
-        for idx, peer in enumerate(self.dht.activePeers):
-
-            if (peer.address, peer.guid, peer.pub) == \
-               (peer_to_add.address, peer_to_add.guid, peer_to_add.pub):
-                self.log.info('Found existing peer, not adding.')
-                return
-
-            if peer.guid == peer_to_add.guid or \
-               peer.pub == peer_to_add.pub or \
-               peer.address == peer_to_add.address:
-
-                foundOutdatedPeer = True
-                self.log.info('Found an outdated peer')
-
-                # Update existing peer
-                self.activePeers[idx] = peer_to_add
-                self.dht.add_peer(self,
-                                  peer_to_add.address,
-                                  peer_to_add.pub,
-                                  peer_to_add.guid,
-                                  peer_to_add.nickname)
-
-        if not foundOutdatedPeer and peer_to_add.guid != self.guid:
-            self.log.info('Adding crypto peer at %s' % peer_to_add.nickname)
-            self.dht.add_peer(self,
-                              peer_to_add.address,
-                              peer_to_add.pub,
-                              peer_to_add.guid,
-                              peer_to_add.nickname)
 
     def get_profile(self):
         peers = {}
