@@ -41,7 +41,7 @@ class TransportLayer(object):
         self.listener = None
 
         # Create one ZeroMQ context to be reused and reduce overhead
-        self.ctx = zmq.Context()
+        self.ctx = zmq.Context.instance()
 
         self.log = logging.getLogger(
             '[%s] %s' % (ob_ctx.market_id, self.__class__.__name__)
@@ -107,7 +107,6 @@ class TransportLayer(object):
                     # if peer.pub:
                     #    peer.send(data, callback)
                     # else:
-                    print 'test %s' % peer
 
                     def cb(msg):
                         print msg
