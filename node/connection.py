@@ -30,17 +30,30 @@ class PeerConnection(object):
         self.nickname = nickname
         self.responses_received = {}
 
+        # Establishing a ZeroMQ stream object
         self.ctx = transport.ctx
+        self.socket = self.ctx.socket(zmq.REQ)
+        self.socket.setsockopt(zmq.LINGER, 0)
+        self.stream = zmqstream.ZMQStream(self.socket, io_loop=ioloop.IOLoop.current())
 
         self.log = logging.getLogger(
             '[%s] %s' % (self.transport.market_id, self.__class__.__name__)
         )
 
+        self._initiate_connection()
+
+    def _initiate_connection(self):
+        try:
+            self.socket.connect(self.address)
+        except zmq.ZMQError as e:
+            if e.errno != errno.EINVAL:
+                raise
+            self.socket.ipv6 = True
+            self.socket.connect(self.address)
+
     def create_zmq_socket(self):
         try:
-            s = self.ctx.socket(zmq.REQ)
-            s.setsockopt(zmq.LINGER, 0)
-            return s
+            return self.socket
         except Exception as e:
             self.log.error('Cannot create socket %s', e)
             raise
@@ -48,6 +61,10 @@ class PeerConnection(object):
 
     def cleanup_context(self):
         self.ctx.destroy()
+
+    def close_socket(self):
+        self.stream.close(0)
+        self.socket.close(0)
 
     def send(self, data, callback):
         self.send_raw(json.dumps(data), callback)
@@ -57,17 +74,8 @@ class PeerConnection(object):
         compressed_data = zlib.compress(serialized, 9)
 
         try:
-            s = self.create_zmq_socket()
-            try:
-                s.connect(self.address)
-            except zmq.ZMQError as e:
-                if e.errno != errno.EINVAL:
-                    raise
-                s.ipv6 = True
-                s.connect(self.address)
 
-            stream = zmqstream.ZMQStream(s, io_loop=ioloop.IOLoop.current())
-            stream.send(compressed_data)
+            self.stream.send(compressed_data)
 
             def cb(stream, msg):
                 response = json.loads(msg[0])
@@ -82,9 +90,9 @@ class PeerConnection(object):
                 if callback is not None:
                     self.log.debug('%s', msg)
                     callback(msg)
-                stream.close()
 
-            stream.on_recv_stream(cb)
+            self.stream.on_recv_stream(cb)
+
         except Exception as e:
             self.log.error(e)
             # Shouldn't we raise the exception here?
@@ -174,24 +182,25 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
 
     def check_port(self):
 
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(10)
-            s.connect((self.ip, self.port))
-        except socket.error:
-            try:
-                s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-                s.settimeout(10)
-                s.connect((self.ip, self.port))
-            except socket.error as e:
-                self.log.error("socket error on %s: %s", self.ip, e)
-                return False
-        except TypeError:
-            self.log.error("tried connecting to invalid address: %s", self.ip)
-            return False
-
-        if s:
-            s.close()
+        # TODO: Not sure I like this at all and possibly target for removal
+        # try:
+        #     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #     s.settimeout(10)
+        #     s.connect((self.ip, self.port))
+        # except socket.error:
+        #     try:
+        #         s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        #         s.settimeout(10)
+        #         s.connect((self.ip, self.port))
+        #     except socket.error as e:
+        #         self.log.error("socket error on %s: %s" % (self.ip, e))
+        #         return False
+        # except TypeError:
+        #     self.log.error("tried connecting to invalid address: %s" % self.ip)
+        #     return False
+        #
+        # if s:
+        #     s.close()
         return True
 
     def sign(self, data):
