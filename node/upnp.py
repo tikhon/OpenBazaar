@@ -199,7 +199,7 @@ class PortMappingEntry(object):
                ', expiration: ' + str(self.expiration) + \
                '}'
 
-if __name__ == '__main__':
+def main():
     # Test code
     PortMapper.DEBUG = True
     mapper = PortMapper()
@@ -215,3 +215,6 @@ if __name__ == '__main__':
     print len(mappings), "mappings"
 
     print mapper.debug_upnp_values()
+
+if __name__ == '__main__':
+    main()

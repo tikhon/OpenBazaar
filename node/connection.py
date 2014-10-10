@@ -38,9 +38,9 @@ class PeerConnection(object):
 
     def create_zmq_socket(self):
         try:
-            socket = self.ctx.socket(zmq.REQ)
-            socket.setsockopt(zmq.LINGER, 0)
-            return socket
+            s = self.ctx.socket(zmq.REQ)
+            s.setsockopt(zmq.LINGER, 0)
+            return s
         except Exception as e:
             self.log.error('Cannot create socket %s' % e)
             raise

@@ -145,8 +145,7 @@ class BackupJSONEncoder(json.JSONEncoder):
         if isinstance(o, Backup):
             return o.__dict__()
 
-
-if __name__ == '__main__':
+def main():
     # tests here.
     def onBackUpDone(backupFilePath):
         print "Backup succeeded!\nOutput file at", backupFilePath
@@ -161,3 +160,6 @@ if __name__ == '__main__':
 
     for x in Backup.get_backups(BackupTool.get_backup_path()):
         print json.dumps(x, cls=BackupJSONEncoder)
+
+if __name__ == '__main__':
+    main()
