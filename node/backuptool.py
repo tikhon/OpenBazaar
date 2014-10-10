@@ -140,6 +140,7 @@ class Backup(json.JSONEncoder):
 
 
 class BackupJSONEncoder(json.JSONEncoder):
+    # pylint: disable=method-hidden
     def default(self, o):
         if isinstance(o, Backup):
             return o.__dict__()

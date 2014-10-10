@@ -1138,6 +1138,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     listen_lock = threading.Lock()
 
     def initialize(self, transport, market_application, db):
+        # pylint: disable=arguments-differ
+        # FIXME: Arguments shouldn't differ.
         self.loop = tornado.ioloop.IOLoop.instance()
         self.log = logging.getLogger(self.__class__.__name__)
         self.log.info("Initialize websockethandler")
