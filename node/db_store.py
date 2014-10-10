@@ -106,7 +106,7 @@ class Obdb(object):
             where_part = operator.join(where_part)
             query = "UPDATE %s SET %s WHERE %s" \
                     % (table, set_part, where_part)
-            self.log.debug('query: %s' % query)
+            self.log.debug('query: %s', query)
             cur.execute(query, tuple(sets + wheres))
         self._disconnectFromDb()
 
@@ -135,7 +135,7 @@ class Obdb(object):
                     % (table, updatefield_part, setfield_part)
             cur.execute(query, tuple(sets))
             lastrowid = cur.lastrowid
-            self.log.debug("query: %s " % query)
+            self.log.debug("query: %s", query)
         self._disconnectFromDb()
         if lastrowid:
             return lastrowid
@@ -174,7 +174,7 @@ class Obdb(object):
             where_part = operator.join(where_part)
             query = "SELECT * FROM %s WHERE %s ORDER BY %s %s %s" \
                     % (table, where_part, order_field, order, limit_clause)
-            self.log.debug("query: %s " % query)
+            self.log.debug("query: %s", query)
             cur.execute(query, tuple(wheres))
             rows = cur.fetchall()
         self._disconnectFromDb()
@@ -209,6 +209,6 @@ class Obdb(object):
             where_part = operator.join(where_part)
             query = "DELETE FROM %s WHERE %s" \
                     % (table, where_part)
-            self.log.debug('Query: %s' % query)
+            self.log.debug('Query: %s', query)
             cur.execute(query, dels)
         self._disconnectFromDb()

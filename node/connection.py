@@ -42,7 +42,7 @@ class PeerConnection(object):
             s.setsockopt(zmq.LINGER, 0)
             return s
         except Exception as e:
-            self.log.error('Cannot create socket %s' % e)
+            self.log.error('Cannot create socket %s', e)
             raise
         # self._socket.setsockopt(zmq.SOCKS_PROXY, "127.0.0.1:9051");
 
@@ -71,7 +71,7 @@ class PeerConnection(object):
 
             def cb(stream, msg):
                 response = json.loads(msg[0])
-                self.log.debug('[send_raw] %s' % pformat(response))
+                self.log.debug('[send_raw] %s', pformat(response))
 
                 # Update active peer info
 
@@ -80,7 +80,7 @@ class PeerConnection(object):
                     self.nickname = response['senderNick']
 
                 if callback is not None:
-                    self.log.debug('%s' % msg)
+                    self.log.debug('%s', msg)
                     callback(msg)
                 stream.close()
 
@@ -118,7 +118,7 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
             def cb(msg, handshake_cb=None):
                 if msg:
 
-                    self.log.debug('ALIVE PEER %s' % msg[0])
+                    self.log.debug('ALIVE PEER %s', msg[0])
                     msg = msg[0]
                     msg = json.loads(msg)
 
@@ -184,10 +184,10 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
                 s.settimeout(10)
                 s.connect((self.ip, self.port))
             except socket.error as e:
-                self.log.error("socket error on %s: %s" % (self.ip, e))
+                self.log.error("socket error on %s: %s", self.ip, e)
                 return False
         except TypeError:
-            self.log.error("tried connecting to invalid address: %s" % self.ip)
+            self.log.error("tried connecting to invalid address: %s", self.ip)
             return False
 
         if s:
@@ -222,7 +222,8 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
                 data['v'] = constants.VERSION
 
                 self.log.debug(
-                    'Sending to peer: %s %s' % (self.ip, pformat(data))
+                    'Sending to peer: %s %s',
+                    self.ip, pformat(data)
                 )
 
                 if self.pub == '':
@@ -233,7 +234,7 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
                     try:
                         data = self.encrypt(json.dumps(data))
                     except Exception as e:
-                        self.log.error('Encryption failed. %s' % e)
+                        self.log.error('Encryption failed. %s', e)
                         return
 
                     try:
@@ -245,9 +246,7 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
                             callback
                         )
                     except Exception as e:
-                        self.log.error(
-                            "Was not able to encode empty data: %s" % e
-                        )
+                        self.log.error("Was not able to encode empty data: %s", e)
             else:
                 self.log.error('Peer is not available for sending data')
         else:
@@ -285,13 +284,13 @@ class PeerListener(object):
             self.stream.close()
             self.listen()
         except Exception as e:
-            self.log.error('[Requests] error: %s' % e)
+            self.log.error('[Requests] error: %s', e)
 
     def set_ok_msg(self, ok_msg):
         self._ok_msg = ok_msg
 
     def listen(self):
-        self.log.info("Listening at: %s:%s" % (self.ip, self.port))
+        self.log.info("Listening at: %s:%s", self.ip, self.port)
         self.socket = self.ctx.socket(zmq.REP)
 
         if network_util.is_loopback_addr(self.ip):
@@ -380,7 +379,7 @@ class CryptoPeerListener(PeerListener):
             serialized = zlib.decompress(serialized)
 
             msg = json.loads(serialized)
-            self.log.info("Message Received [%s]" % msg.get('type', 'unknown'))
+            self.log.info("Message Received [%s]", msg.get('type', 'unknown'))
 
             if msg.get('type') is None:
 
@@ -393,10 +392,10 @@ class CryptoPeerListener(PeerListener):
                     try:
                         data = cryptor.decrypt(data)
                     except Exception as e:
-                        self.log.info('Exception: %s' % e)
+                        self.log.info('Exception: %s', e)
 
-                    self.log.debug('Signature: %s' % sig.encode('hex'))
-                    self.log.debug('Signed Data: %s' % data)
+                    self.log.debug('Signature: %s', sig.encode('hex'))
+                    self.log.debug('Signed Data: %s', data)
 
                     # Check signature
                     data_json = json.loads(data)
@@ -404,13 +403,13 @@ class CryptoPeerListener(PeerListener):
                     if sigCryptor.verify(sig, data):
                         self.log.info('Verified')
                     else:
-                        self.log.error('Message signature could not be verified %s' % msg)
+                        self.log.error('Message signature could not be verified %s', msg)
                         # return
 
                     msg = json.loads(data)
-                    self.log.debug('Message Data %s ' % msg)
+                    self.log.debug('Message Data %s', msg)
                 except Exception as e:
-                    self.log.error('Could not decrypt message properly %s' % e)
+                    self.log.error('Could not decrypt message properly %s', e)
 
         except ValueError:
             try:
@@ -418,10 +417,11 @@ class CryptoPeerListener(PeerListener):
                 msg = json.loads(msg)
 
                 self.log.info(
-                    "Decrypted Message [%s]" % msg.get('type', 'unknown')
+                    "Decrypted Message [%s]",
+                    msg.get('type', 'unknown')
                 )
             except Exception:
-                self.log.error("Could not decrypt message: %s" % msg)
+                self.log.error("Could not decrypt message: %s", msg)
 
                 return
 
