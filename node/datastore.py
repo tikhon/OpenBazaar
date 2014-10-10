@@ -123,14 +123,14 @@ class SqliteDataStore(DataStore):
                 "datastore",
                 {
                     'key': key,
-                    'market_id': market_id
-                },
-                {
-                    'key': key,
                     'value': value,
                     'lastPublished': lastPublished,
                     'originallyPublished': originallyPublished,
                     'originalPublisherID': originalPublisherID,
+                    'market_id': market_id
+                },
+                {
+                    'key': key,
                     'market_id': market_id
                 }
             )

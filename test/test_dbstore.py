@@ -136,7 +136,7 @@ class TestDbOperations(unittest.TestCase):
 
         # Update the record with pubkey equal to '123'
         # and lower its rating to 9
-        db.updateEntries("reviews", {"pubkey": "123"}, {"rating": 9})
+        db.updateEntries("reviews", {"rating": 9}, {"pubkey": "123"})
 
         # Retrieve the same record again
         retrieved_review = db.selectEntries("reviews", {"pubkey": "123"})[0]

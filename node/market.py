@@ -96,8 +96,8 @@ class Market(object):
         """This just flags the welcome screen to not show on startup"""
         self.db.updateEntries(
             "settings",
-            {'market_id': self.transport.market_id},
-            {"welcome": "disable"}
+            {"welcome": "disable"},
+            {'market_id': self.transport.market_id}
         )
 
     def private_key(self):
@@ -289,8 +289,8 @@ class Market(object):
 
         self.db.updateEntries(
             "settings",
-            {'market_id': self.transport.market_id},
-            self.settings
+            self.settings,
+            {'market_id': self.transport.market_id}
         )
 
     def _decode_list(self, data):
@@ -344,8 +344,8 @@ class Market(object):
 
         self.db.updateEntries(
             "settings",
-            {'market_id': self.transport.market_id},
-            self.settings
+            self.settings,
+            {'market_id': self.transport.market_id}
         )
 
     def republish_contracts(self):
@@ -481,8 +481,9 @@ class Market(object):
 
         self.db.updateEntries(
             "contracts",
-            {"id": msg["contract_id"]},
-            {"deleted": 1})
+            {"deleted": 1},
+            {"id": msg["contract_id"]}
+        )
         # Updating the DHT index of your store's listings
         self.update_listings_index()
 
@@ -622,8 +623,9 @@ class Market(object):
         self.log.info("Undo remove contract: %s", contract_id)
         self.db.updateEntries(
             "contracts",
-            {"market_id": self.transport.market_id.replace("'", "''"), "id": contract_id},
-            {"deleted": "0"})
+            {"deleted": "0"},
+            {"market_id": self.transport.market_id.replace("'", "''"), "id": contract_id}
+        )
 
     def save_settings(self, msg):
         """Update local settings"""
@@ -656,8 +658,9 @@ class Market(object):
         # Update local settings
         self.db.updateEntries(
             "settings",
-            {'market_id': self.transport.market_id},
-            msg)
+            msg,
+            {'market_id': self.transport.market_id}
+        )
 
     def get_settings(self):
         """Get local settings"""
