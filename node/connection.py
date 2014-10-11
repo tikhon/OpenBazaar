@@ -198,15 +198,13 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
         return cryptor.sign(data)
 
     def encrypt(self, data):
-        try:
-            if self.pub is not None:
-                hexkey = hexToPubkey(self.pub)
-                return ec.ECC.encrypt(data, hexkey)
-            else:
-                self.log.error('Public Key is missing')
-                return False
-        except Exception as e:
-            self.log.error('Encryption failed. %s' % e)
+        """
+        Encrypt the data with self.pub and return the ciphertext.
+        @raises Exception: The encryption failed.
+        """
+        assert self.pub, "Attempt to encrypt without key."
+        hexkey = hexToPubkey(self.pub)
+        return ec.ECC.encrypt(data, hexkey)
 
     def send(self, data, callback=lambda msg: None):
 
@@ -230,19 +228,21 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
                     self.log.info('There is no public key for encryption')
                 else:
                     signature = self.sign(json.dumps(data))
-                    data = self.encrypt(json.dumps(data))
 
                     try:
-                        if data is not None:
-                            self.send_raw(
-                                json.dumps({
-                                    'sig': signature.encode('hex'),
-                                    'data': data.encode('hex')
-                                }),
-                                callback
-                            )
-                        else:
-                            self.log.error('Data was empty')
+                        data = self.encrypt(json.dumps(data))
+                    except Exception as e:
+                        self.log.error('Encryption failed. %s' % e)
+                        return
+
+                    try:
+                        self.send_raw(
+                            json.dumps({
+                                'sig': signature.encode('hex'),
+                                'data': data.encode('hex')
+                            }),
+                            callback
+                        )
                     except Exception as e:
                         self.log.error(
                             "Was not able to encode empty data: %s" % e
