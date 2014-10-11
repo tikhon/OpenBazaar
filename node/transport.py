@@ -483,14 +483,20 @@ class CryptoTransportLayer(TransportLayer):
         known_peers = list(set(seed_peers)) + list(set(db_peers))
 
         for known_peer in known_peers:
-            Thread(target=self.dht.add_peer, args=(self, known_peer,)).start()
+            self.dht.add_peer(self, known_peer)
 
-        # TODO: This needs rethinking. Normally we can search for ourselves
-        #       but because we are not connected to them quick enough this
-        #       will always fail. Need @gubatron to review
         # Populate routing table by searching for self
-        # if len(known_peers) > 0:
-        #     self.search_for_my_node()
+        if len(known_peers) > 0:
+            # Check every one second if we are connected
+            # We could use a PeriodicCallback but I think this is simpler
+            # since this will be repeated in most cases less than 10 times
+            def join_callback():
+                # If we are not connected to any node, reschedule a check
+                if not self.dht.activePeers:
+                    ioloop.IOLoop.instance().call_later(1, join_callback)
+                else:
+                    self.search_for_my_node()
+            join_callback()
 
         if callback is not None:
             callback('Joined')
@@ -503,7 +509,7 @@ class CryptoTransportLayer(TransportLayer):
         return peers
 
     def search_for_my_node(self):
-        print 'Searching for myself'
+        self.log.info('Searching for myself')
         self.dht._iterativeFind(self.guid, self.dht.knownNodes, 'findNode')
 
     def get_crypto_peer(self, guid=None, uri=None, pubkey=None, nickname=None):
