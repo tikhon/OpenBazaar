@@ -1,8 +1,12 @@
 import unittest
-
+from node.openbazaar_daemon import OpenBazaarContext
 import mock
 
 from node import protocol, transport
+
+
+def get_mock_open_bazaar_context():
+    return OpenBazaarContext.create_default_instance()
 
 
 class TestTransportLayerCallbacks(unittest.TestCase):
@@ -17,7 +21,11 @@ class TestTransportLayerCallbacks(unittest.TestCase):
         self.validator2 = mock.Mock()
         self.validator3 = mock.Mock()
 
-        self.tl = transport.TransportLayer(1, 'localhost', None, 1)
+        ob_ctx = get_mock_open_bazaar_context()
+        guid = 1
+        nickname = None
+
+        self.tl = transport.TransportLayer(ob_ctx, guid, nickname)
         self.tl.add_callback('section_one', {'cb': self.callback1, 'validator_cb': self.validator1})
         self.tl.add_callback('section_one', {'cb': self.callback2, 'validator_cb': self.validator2})
         self.tl.add_callback('all', {'cb': self.callback3, 'validator_cb': self.validator3})
@@ -57,7 +65,10 @@ class TestTransportLayerCallbacks(unittest.TestCase):
 class TestTransportLayerMessageHandling(unittest.TestCase):
 
     def setUp(self):
-        self.tl = transport.TransportLayer(1, 'localhost', None, 1)
+        ob_ctx = get_mock_open_bazaar_context()
+        guid = 1
+        nickname = None
+        self.tl = transport.TransportLayer(ob_ctx, guid, nickname)
 
     def test_on_message_ok(self):
         """OK message should trigger no callbacks."""
@@ -93,11 +104,15 @@ class TestTransportLayerMessageHandling(unittest.TestCase):
 class TestTransportLayerProfile(unittest.TestCase):
 
     def test_get_profile(self):
-        tl = transport.TransportLayer(1, '1.1.1.1', 12345, 1)
+        ob_ctx = get_mock_open_bazaar_context()
+        ob_ctx.my_market_ip = '1.1.1.1'
+        guid = 1
+        nickname = None
+        tl = transport.TransportLayer(ob_ctx, guid, nickname)
         self.assertEqual(
             tl.get_profile(),
             protocol.hello_request({
-                'uri': 'tcp://1.1.1.1:12345'
+                'uri': 'tcp://127.0.0.1:12345'
             })
         )
 

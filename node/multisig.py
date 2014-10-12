@@ -20,6 +20,7 @@ import obelisk
 #
 # You will need 3 keys for buyer, seller and arbitrer
 
+
 def build_output_info_list(unspent_rows):
     unspent_infos = []
     for row in unspent_rows:

@@ -1,0 +1,6 @@
+#!/bin/bash
+# set -x
+if [[ $OSTYPE == darwin* ]] ; then
+  export DYLD_LIBRARY_PATH=$(brew --prefix openssl)/lib:${DYLD_LIBRARY_PATH}
+fi
+./env/bin/python node/openbazaar.py "$@" &

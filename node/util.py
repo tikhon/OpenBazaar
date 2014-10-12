@@ -1,4 +1,12 @@
+import os
+import sys
 import webbrowser
+import platform
+
+
+def is_mac():
+    os_name = platform.uname()[0]
+    return os_name == 'Darwin'
 
 
 def open_default_webbrowser(url, protocol="http"):
@@ -31,3 +39,13 @@ def open_default_webbrowser(url, protocol="http"):
             url
         )
     return success
+
+
+def osx_check_dyld_library_path():
+    """This is a necessary workaround as you cannot set the DYLD_LIBRARY_PATH by the time python has started."""
+    if 'DYLD_LIBRARY_PATH' not in os.environ or len(os.environ['DYLD_LIBRARY_PATH']) == 0:
+        print 'WARNING: DYLD_LIBRARY_PATH not set, this might cause issues with openssl elliptic curve cryptography and other libraries.'
+        print "It is recommended that you stop OpenBazaar and set your DYLD_LIBRARY_PATH environment variable as follows\n"
+        print 'export DYLD_LIBRARY_PATH=$(brew --prefix openssl)/lib:${DYLD_LIBRARY_PATH}', "\n"
+        print 'then restart OpenBazaar.', "\n"
+        sys.exit(1)

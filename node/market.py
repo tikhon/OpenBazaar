@@ -462,10 +462,14 @@ class Market(object):
                           'contracts': my_contracts}}
 
         # Pass off to thread to keep GUI snappy
-        t = Thread(target=self.transport.store,
-                   args=(contract_index_key,
-                         value,
-                         self.transport.guid))
+        t = Thread(
+            target=self.transport.store,
+            args=(
+                contract_index_key,
+                value,
+                self.transport.guid,
+                )
+            )
         t.start()
 
     def remove_contract(self, msg):

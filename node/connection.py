@@ -132,7 +132,8 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
 
                     # Add this peer to active peers list
                     for idx, peer in enumerate(self.transport.dht.activePeers):
-                        if peer.guid == self.guid or peer.address == self.address:
+                        if peer.guid == self.guid or\
+                           peer.address == self.address:
                             self.transport.dht.activePeers[idx] = self
                             self.transport.dht.add_peer(
                                 self.transport,

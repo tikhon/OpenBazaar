@@ -27,15 +27,14 @@ import network_util
 
 class TransportLayer(object):
     # Transport layer manages a list of peers
-    def __init__(self, market_id, my_ip, my_port, my_guid, nickname=None):
-
+    def __init__(self, ob_ctx, guid, nickname=None):
         self.peers = {}
         self.callbacks = defaultdict(list)
         self.timeouts = []
-        self.port = my_port
-        self.ip = my_ip
-        self.guid = my_guid
-        self.market_id = market_id
+        self.port = ob_ctx.server_public_port
+        self.ip = ob_ctx.server_public_ip
+        self.guid = guid
+        self.market_id = ob_ctx.market_id
         self.nickname = nickname
         self.handler = None
         self.uri = network_util.get_peer_url(self.ip, self.port)
@@ -45,7 +44,7 @@ class TransportLayer(object):
         self.ctx = zmq.Context()
 
         self.log = logging.getLogger(
-            '[%s] %s' % (market_id, self.__class__.__name__)
+            '[%s] %s' % (ob_ctx.market_id, self.__class__.__name__)
         )
 
     def start_listener(self):
@@ -183,29 +182,29 @@ class TransportLayer(object):
 
 class CryptoTransportLayer(TransportLayer):
 
-    def __init__(self, my_ip, my_port, market_id, db, bm_user=None, bm_pass=None,
-                 bm_port=None, seed_mode=0, dev_mode=False, disable_ip_update=False):
+    def __init__(self, ob_ctx, db):
+
+        self.ob_ctx = ob_ctx
 
         self.log = logging.getLogger(
-            '[%s] %s' % (market_id, self.__class__.__name__)
+            '[%s] %s' % (ob_ctx.market_id, self.__class__.__name__)
         )
         requests_log = logging.getLogger("requests")
         requests_log.setLevel(logging.WARNING)
 
-        # Connect to database
         self.db = db
 
         self.bitmessage_api = None
-        if (bm_user, bm_pass, bm_port) != (None, None, None):
-            if not self._connect_to_bitmessage(bm_user, bm_pass, bm_port):
+        if (ob_ctx.bm_user, ob_ctx.bm_pass, ob_ctx.bm_port) != (None, None, -1):
+            if not self._connect_to_bitmessage():
                 self.log.info('Bitmessage not installed or started')
 
-        self.market_id = market_id
+        self.market_id = ob_ctx.market_id
         self.nick_mapping = {}
-        self.uri = network_util.get_peer_url(my_ip, my_port)
-        self.ip = my_ip
+        self.uri = network_util.get_peer_url(ob_ctx.server_public_ip, ob_ctx.server_public_port)
+        self.ip = ob_ctx.server_public_ip
         self.nickname = ""
-        self._dev_mode = dev_mode
+        self.dev_mode = ob_ctx.dev_mode
 
         self.all_messages = (
             'hello',
@@ -217,18 +216,19 @@ class CryptoTransportLayer(TransportLayer):
         # Set up
         self._setup_settings()
 
+        ob_ctx.market_id = self.market_id
+
         self.dht = DHT(self, self.market_id, self.settings, self.db)
 
         # self._myself = ec.ECC(pubkey=self.pubkey.decode('hex'),
         #                       privkey=self.secret.decode('hex'),
         #                       curve='secp256k1')
 
-        TransportLayer.__init__(self, market_id, my_ip, my_port,
-                                self.guid, self.nickname)
+        TransportLayer.__init__(self, ob_ctx, self.guid, self.nickname)
 
         self.start_listener()
 
-        if seed_mode == 0 and not dev_mode and not disable_ip_update:
+        if ob_ctx.enable_ip_checker and not ob_ctx.seed_mode and not ob_ctx.dev_mode:
             self.start_ip_address_checker()
 
     def start_listener(self):
@@ -259,18 +259,25 @@ class CryptoTransportLayer(TransportLayer):
 
     def start_ip_address_checker(self):
         '''Checks for possible public IP change'''
-        self.caller = PeriodicCallback(self._ip_updater_periodic_callback, 5000, ioloop.IOLoop.instance())
-        self.caller.start()
+        if self.ob_ctx.enable_ip_checker:
+            self.caller = PeriodicCallback(self._ip_updater_periodic_callback, 5000, ioloop.IOLoop.instance())
+            self.caller.start()
+            self.log.info("IP_CHECKER_ENABLED: Periodic IP Address Checker started.")
 
     def _ip_updater_periodic_callback(self):
-        new_ip = network_util.get_my_ip()
-        if not new_ip or new_ip == self.ip:
-            return
+        if self.ob_ctx.enable_ip_checker:
+            new_ip = network_util.get_my_ip()
 
-        if self.listener is not None:
-            self.listener.set_ip_address(new_ip)
+            if not new_ip or new_ip == self.ip:
+                return
 
-        self.dht._iterativeFind(self.guid, [], 'findNode')
+            self.ob_ctx.server_public_ip = new_ip
+            self.ip = new_ip
+
+            if self.listener is not None:
+                self.listener.set_ip_address(new_ip)
+
+            self.dht._iterativeFind(self.guid, [], 'findNode')
 
     def save_peer_to_db(self, peer_tuple):
         uri = peer_tuple[0]
@@ -292,10 +299,13 @@ class CryptoTransportLayer(TransportLayer):
                 "market_id": self.market_id
             })
 
-    def _connect_to_bitmessage(self, bm_user, bm_pass, bm_port):
+    def _connect_to_bitmessage(self):
         # Get bitmessage going
         # First, try to find a local instance
         result = False
+        bm_user = self.ob_ctx.bm_user
+        bm_pass = self.ob_ctx.bm_pass
+        bm_port = self.ob_ctx.bm_port
         try:
             self.log.info('[_connect_to_bitmessage] Connecting to Bitmessage on port %s' % bm_port)
             self.bitmessage_api = xmlrpclib.ServerProxy("http://{}:{}@localhost:{}/".format(bm_user, bm_pass, bm_port), verbose=0)
@@ -369,7 +379,6 @@ class CryptoTransportLayer(TransportLayer):
         self.dht.on_findNodeResponse(self, msg)
 
     def _setup_settings(self):
-
         try:
             self.settings = self.db.selectEntries("settings", {"market_id": self.market_id})
         except (OperationalError, DatabaseError) as e:
@@ -436,6 +445,12 @@ class CryptoTransportLayer(TransportLayer):
             curve='secp256k1'
         )
 
+        # In case user wants to override with command line passed bitmessage values
+        if self.ob_ctx.bm_user is not None and \
+           self.ob_ctx.bm_pass is not None and \
+           self.ob_ctx.bm_port is not None:
+            self._connect_to_bitmessage()
+
         # self.log.debug('Retrieved Settings: \n%s', pformat(self.settings))
 
     def _generate_new_keypair(self):
@@ -484,8 +499,6 @@ class CryptoTransportLayer(TransportLayer):
 
         self.log.info('Joining network')
 
-        known_peers = []
-
         # Connect up through seed servers
         for idx, seed in enumerate(seed_peers):
             seed_peers[idx] = network_util.get_peer_url(seed, "12345")
@@ -518,7 +531,6 @@ class CryptoTransportLayer(TransportLayer):
     def search_for_my_node(self):
         print 'Searching for myself'
         self.dht._iterativeFind(self.guid, self.dht.knownNodes, 'findNode')
-
 
     def get_crypto_peer(self, guid=None, uri=None, pubkey=None, nickname=None):
         if guid == self.guid:
