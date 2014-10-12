@@ -3,6 +3,7 @@ import json
 import multiprocessing
 import os
 import signal
+from threading import Lock
 import time
 
 import tornado.web
@@ -120,9 +121,69 @@ class OpenBazaarContext(object):
 
         return json.dumps(r).replace(", ", ",\n  ")
 
+    @staticmethod
+    def get_defaults():
+        return {'MARKET_ID': 1,
+                'SERVER_IP': '127.0.0.1',
+                'SERVER_PORT': 12345,
+                'LOG_DIR': 'logs',
+                'LOG_FILE': 'production.log',
+                'DB_DIR': 'db',
+                'DB_FILE': 'ob.db',
+                'DEV_DB_FILE': 'ob-dev-{0}.db',
+                'DEVELOPMENT': False,
+                'DEV_NODES': 3,
+                'SEED_MODE': False,
+                'SEED_HOSTNAMES': ['seed.openbazaar.org',
+                                   'seed2.openbazaar.org',
+                                   'seed.openlabs.co',
+                                   'us.seed.bizarre.company',
+                                   'eu.seed.bizarre.company'],
+                'DISABLE_UPNP': False,
+                'DISABLE_STUN_CHECK': False,
+                'DISABLE_OPEN_DEFAULT_WEBBROWSER': False,
+                'DISABLE_SQLITE_CRYPT': False,
+                # CRITICAL=50, ERROR=40, WARNING=30, DEBUG=10, NOTSET=0
+                'LOG_LEVEL': 10,
+                'NODES': 3,
+                'HTTP_IP': '127.0.0.1',
+                'HTTP_PORT': None,
+                'BITMESSAGE_USER': None,
+                'BITMESSAGE_PASS': None,
+                'BITMESSAGE_PORT': -1,
+                'ENABLE_IP_CHECKER': False,
+                'CONFIG_FILE': None
+                }
+
+    @staticmethod
+    def create_default_instance():
+        DEFAULTS = OpenBazaarContext.get_defaults()
+        return OpenBazaarContext(None,
+                                 server_public_ip=defaults['SERVER_IP'],
+                                 server_public_port=defaults['SERVER_PORT'],
+                                 http_ip=defaults['SERVER_IP'],
+                                 http_port=defaults['SERVER_PORT'],
+                                 db_path=os.path.join(defaults['DB_DIR'], defaults['DB_FILE']),
+                                 log_path=os.path.join(defaults['LOG_DIR'], defaults['LOG_FILE']),
+                                 log_level=defaults['LOG_LEVEL'],
+                                 market_id=defaults['MARKET_ID'],
+                                 bm_user=defaults['BITMESSAGE_USER'],
+                                 bm_pass=defaults['BITMESSAGE_PASS'],
+                                 bm_port=defaults['BITMESSAGE_PORT'],
+                                 seed_peers=defaults['SEED_HOSTNAMES'],
+                                 seed_mode=defaults['SEED_MODE'],
+                                 dev_mode=defaults['DEVELOPMENT'],
+                                 dev_nodes=defaults['DEV_NODES'],
+                                 disable_upnp=defaults['DISABLE_UPNP'],
+                                 disable_stun_check=defaults['DISABLE_STUN_CHECK'],
+                                 disable_open_browser=defaults['DISABLE_OPEN_DEFAULT_WEBBROWSER'],
+                                 disable_sqlite_crypt=defaults['DISABLE_SQLITE_CRYPT'],
+                                 enable_ip_checker=defaults['ENABLE_IP_CHECKER'])
+
 
 class MarketApplication(tornado.web.Application):
     def __init__(self, ob_ctx):
+        self.shutdown_mutex = Lock()
 
         db = Obdb(ob_ctx.db_path, ob_ctx.disable_sqlite_crypt)
 
@@ -182,6 +243,7 @@ class MarketApplication(tornado.web.Application):
             print "[openbazaar] MarketApplication.clean_upnp_port_mapping() failed!"
 
     def shutdown(self, x=None, y=None):
+        self.shutdown_mutex.acquire()
         print "MarketApplication.shutdown!"
         locallogger = logging.getLogger(
             '[%s] %s' % (self.market.market_id, 'root')
@@ -193,6 +255,7 @@ class MarketApplication(tornado.web.Application):
         tornado.ioloop.IOLoop.instance().stop()
 
         self.transport.shutdown()
+        self.shutdown_mutex.release()
         os._exit(0)
 
 
@@ -204,7 +267,7 @@ def start_io_loop():
         tornado.ioloop.IOLoop.instance().start()
     except Exception as e:
         print "openbazaar::start_io_loop Exception:", e
-        raise e
+        raise
 
 
 def node_starter(ob_ctxs):

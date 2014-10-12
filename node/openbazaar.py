@@ -14,42 +14,8 @@ from network_util import init_aditional_STUN_servers, check_NAT_status
 from threading import Thread
 
 
-def get_defaults():
-    return {'MARKET_ID': 1,
-            'SERVER_IP': '127.0.0.1',
-            'SERVER_PORT': 12345,
-            'LOG_DIR': 'logs',
-            'LOG_FILE': 'production.log',
-            'DB_DIR': 'db',
-            'DB_FILE': 'ob.db',
-            'DEV_DB_FILE': 'ob-dev-{0}.db',
-            'DEVELOPMENT': False,
-            'DEV_NODES': 3,
-            'SEED_MODE': False,
-            'SEED_HOSTNAMES': ['seed.openbazaar.org',
-                               'seed2.openbazaar.org',
-                               'seed.openlabs.co',
-                               'us.seed.bizarre.company',
-                               'eu.seed.bizarre.company'],
-            'DISABLE_UPNP': False,
-            'DISABLE_STUN_CHECK': False,
-            'DISABLE_OPEN_DEFAULT_WEBBROWSER': False,
-            'DISABLE_SQLITE_CRYPT': False,
-            # CRITICAL=50, ERROR=40, WARNING=30, DEBUG=10, NOTSET=0
-            'LOG_LEVEL': 10,
-            'NODES': 3,
-            'HTTP_IP': '127.0.0.1',
-            'HTTP_PORT': None,
-            'BITMESSAGE_USER': None,
-            'BITMESSAGE_PASS': None,
-            'BITMESSAGE_PORT': -1,
-            'ENABLE_IP_CHECKER': False,
-            'CONFIG_FILE': None
-            }
-
-
 def create_argument_parser():
-    defaults = get_defaults()
+    defaults = OpenBazaarContext.get_defaults()
 
     parser = argparse.ArgumentParser(usage=usage(),
                                      add_help=False)
@@ -233,7 +199,7 @@ def create_openbazaar_contexts(arguments, nat_status):
     passed via the command line will override the settings on the
     configuration file.
     """
-    defaults = get_defaults()
+    defaults = OpenBazaarContext.get_defaults()
 
     server_public_ip = defaults['SERVER_IP']
     if server_public_ip != arguments.server_public_ip:
@@ -438,7 +404,7 @@ def ensure_database_setup(ob_ctx, defaults):
 
 
 def start(arguments):
-    defaults = get_defaults()
+    defaults = OpenBazaarContext.get_defaults()
     init_aditional_STUN_servers()
 
     # Turn off checks that don't make sense in development mode

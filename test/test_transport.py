@@ -6,27 +6,7 @@ from node import protocol, transport
 
 
 def get_mock_open_bazaar_context():
-    return OpenBazaarContext(None,
-                             my_market_ip='localhost',
-                             my_market_port=12345,
-                             http_ip='localhost',
-                             http_port=-1,
-                             db_path='db/ob.db',
-                             log_path=None,
-                             log_level=10,
-                             market_id=1,
-                             bm_user=None,
-                             bm_pass=None,
-                             bm_port=-1,
-                             seed_peers=[],
-                             seed_mode=False,
-                             dev_mode=False,
-                             dev_nodes=-1,
-                             disable_upnp=True,
-                             disable_stun_check=True,
-                             disable_open_browser=True,
-                             disable_sqlite_crypt=False,
-                             enable_ip_checker=False)
+    return OpenBazaarContext.create_default_instance()
 
 
 class TestTransportLayerCallbacks(unittest.TestCase):
