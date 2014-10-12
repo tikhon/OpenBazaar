@@ -45,8 +45,8 @@ class OpenBazaarContext(object):
     """
     def __init__(self,
                  nat_status,
-                 my_market_ip,
-                 my_market_port,
+                 server_public_ip,
+                 server_public_port,
                  http_ip,
                  http_port,
                  db_path,
@@ -66,8 +66,8 @@ class OpenBazaarContext(object):
                  disable_sqlite_crypt,
                  enable_ip_checker):
         self.nat_status = nat_status
-        self.my_market_ip = my_market_ip
-        self.my_market_port = my_market_port
+        self.server_public_ip = server_public_ip
+        self.server_public_port = server_public_port
         self.http_ip = http_ip
         self.http_port = http_port
         self.db_path = db_path
@@ -95,8 +95,8 @@ class OpenBazaarContext(object):
         r = {"nat_status.nat_type": self.nat_status['nat_type'] if self.nat_status is not None else None,
              "nat_status.external_ip": self.nat_status['external_ip'] if self.nat_status is not None else None,
              "nat_status.external_port": self.nat_status['external_port'] if self.nat_status is not None else None,
-             "my_market_ip": self.my_market_ip,
-             "my_market_port": self.my_market_port,
+             "server_public_ip": self.server_public_ip,
+             "server_public_port": self.server_public_port,
              "http_ip": self.http_ip,
              "http_port": self.http_port,
              "log_path": self.log_path,
@@ -242,9 +242,9 @@ def start_node(ob_ctx):
     application = MarketApplication(ob_ctx)
 
     error = True
-    p2p_port = ob_ctx.my_market_port
+    p2p_port = ob_ctx.server_public_port
 
-    if ob_ctx.http_port == -1:
+    if ob_ctx.http_port is None:
         ob_ctx.http_port = get_random_free_tcp_port(8889, 8988)
 
     while error:

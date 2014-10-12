@@ -8,6 +8,7 @@ import argparse
 import multiprocessing
 import psutil
 from openbazaar_daemon import node_starter
+from openbazaar_daemon import OpenBazaarContext
 from setup_db import setup_db
 from network_util import init_aditional_STUN_servers, check_NAT_status
 from threading import Thread
@@ -38,7 +39,7 @@ def get_defaults():
             'LOG_LEVEL': 10,
             'NODES': 3,
             'HTTP_IP': '127.0.0.1',
-            'HTTP_PORT': -1,
+            'HTTP_PORT': None,
             'BITMESSAGE_USER': None,
             'BITMESSAGE_PASS': None,
             'BITMESSAGE_PORT': -1,
@@ -56,14 +57,14 @@ def create_argument_parser():
     parser.add_argument('-i', '--server-public-ip',
                         default=defaults['SERVER_IP'])
 
-    parser.add_argument('-p', '--server-public-port', '--my-market-port',
+    parser.add_argument('-p', '--server-public-port',
                         default=defaults['SERVER_PORT'],
                         type=int)
 
-    parser.add_argument('-k', '--http-ip', '--web-ip',
+    parser.add_argument('-k', '--http-ip',
                         default=defaults['HTTP_IP'])
 
-    parser.add_argument('-q', '--web-port', '--http-port',
+    parser.add_argument('-q', '--http-port',
                         type=int, default=defaults['HTTP_PORT'])
 
     default_log_path = os.path.join(defaults['LOG_DIR'], defaults['LOG_FILE'])
@@ -78,7 +79,7 @@ def create_argument_parser():
                         default=defaults['DEVELOPMENT'])
 
     default_db_path = os.path.join(defaults['DB_DIR'], defaults['DB_FILE'])
-    parser.add_argument("--db-path", "--database",
+    parser.add_argument("--db-path",
                         default=default_db_path)
 
     parser.add_argument('-n', '--dev-nodes',
@@ -112,7 +113,7 @@ def create_argument_parser():
 
     parser.add_argument('-s', '--seeds',
                         nargs='*',
-                        default=[])
+                        default=defaults['SEED_HOSTNAMES'])
 
     parser.add_argument('--disable-open-browser',
                         action='store_true',
@@ -152,13 +153,13 @@ openbazaar [options] <command>
     -i, --server-public-ip <ip address>
         Server public IP
 
-    -p, --server-public-port, --my-market-port <port number>
+    -p, --server-public-port <port number>
         Server public (P2P) port (default 12345)
 
-    -k, --http-ip, --web-ip <ip address>
+    -k, --http-ip <ip address>
         Web interface IP (default 127.0.0.1; use 0.0.0.0 for any)
 
-    -q, --web-port, --http-port <port number>
+    -q, --http-port <port number>
         Web interface port (-1 = random by default)
 
     -l, --log <file path>
@@ -180,8 +181,8 @@ openbazaar [options] <command>
     -n, --dev-nodes
         Number of dev nodes to start up
 
-    --database
-        Database filename. (default 'db/od.db')
+    --db-path
+        Database file path. (default 'db/od.db')
 
     --disable-sqlite-crypt
         Disable encryption on sqlite database
@@ -232,18 +233,14 @@ def create_openbazaar_contexts(arguments, nat_status):
     passed via the command line will override the settings on the
     configuration file.
     """
-    # TODO: if a --config file has been specified
-    # first load config values from it
-    # then override the rest that has been passed
-    # through the command line.
     defaults = get_defaults()
 
-    my_market_ip = defaults['SERVER_IP']
-    if my_market_ip != arguments.server_public_ip:
-        my_market_ip = arguments.server_public_ip
+    server_public_ip = defaults['SERVER_IP']
+    if server_public_ip != arguments.server_public_ip:
+        server_public_ip = arguments.server_public_ip
     elif nat_status is not None:
         print nat_status
-        my_market_ip = nat_status['external_ip']
+        server_public_ip = nat_status['external_ip']
 
     # "I'll purposefully leave these seemingly useless Schlemiel-styled
     # comments as visual separators to denote the beginning and end of
@@ -252,14 +249,14 @@ def create_openbazaar_contexts(arguments, nat_status):
     # annoy you." -Gubatron :)
 
     # market port
-    my_market_port = defaults['SERVER_PORT']
+    server_public_port = defaults['SERVER_PORT']
     if arguments.server_public_port is not None and\
-       arguments.server_public_port != my_market_port:
-        my_market_port = arguments.server_public_port
+       arguments.server_public_port != server_public_port:
+        server_public_port = arguments.server_public_port
     elif nat_status is not None:
         # override the port for p2p communications with the one
         # obtained from the STUN server.
-        my_market_port = nat_status['external_port']
+        server_public_port = nat_status['external_port']
 
     # http ip
     http_ip = defaults['HTTP_IP']
@@ -268,8 +265,8 @@ def create_openbazaar_contexts(arguments, nat_status):
 
     # http port
     http_port = defaults['HTTP_PORT']
-    if arguments.web_port is not None and arguments.web_port != http_port:
-        http_port = arguments.web_port
+    if arguments.http_port is not None and arguments.http_port != http_port:
+        http_port = arguments.http_port
 
     # log path (requires LOG_DIR to exist)
     if not os.path.exists(defaults['LOG_DIR']):
@@ -314,9 +311,7 @@ def create_openbazaar_contexts(arguments, nat_status):
         seed_peers = seed_peers + arguments.seeds
 
     # seed_mode
-    seed_mode = False
-    if arguments.seed_mode:
-        seed_mode = True
+    seed_mode = arguments.seed_mode
 
     # dev_mode
     dev_mode = defaults['DEVELOPMENT']
@@ -339,9 +334,7 @@ def create_openbazaar_contexts(arguments, nat_status):
         db_path = arguments.db_path
 
     # disable upnp
-    disable_upnp = defaults['DISABLE_UPNP']
-    if arguments.disable_upnp:
-        disable_upnp = True
+    disable_upnp = defaults['DISABLE_UPNP'] or arguments.disable_upnp
 
     # disable stun check
     disable_stun_check = defaults['DISABLE_STUN_CHECK']
@@ -363,15 +356,13 @@ def create_openbazaar_contexts(arguments, nat_status):
     if arguments.enable_ip_checker:
         enable_ip_checker = True
 
-    # please don't move this import from here, things will break.
-    from openbazaar_daemon import OpenBazaarContext
     ob_ctxs = []
 
     if not dev_mode:
         # we return a list of a single element, a production node.
         ob_ctxs.append(OpenBazaarContext(nat_status,
-                                         my_market_ip,
-                                         my_market_port,
+                                         server_public_ip,
+                                         server_public_port,
                                          http_ip,
                                          http_port,
                                          db_path,
@@ -399,8 +390,8 @@ def create_openbazaar_contexts(arguments, nat_status):
             db_dev_filename = defaults['DEV_DB_FILE'].format(i)
             db_path = os.path.join(db_dirname, db_dev_filename)
             ob_ctxs.append(OpenBazaarContext(nat_status,
-                                             my_market_ip,
-                                             my_market_port + i - 1,
+                                             server_public_ip,
+                                             server_public_port + i - 1,
                                              http_ip,
                                              http_port,
                                              db_path,
@@ -537,7 +528,7 @@ def load_config_file_arguments(parser):
             config_file_arguments = [x for x in
                                      ' '.join(valid_config_lines).split(' ')
                                      if len(x) > 0]
-            sys.argv = [sys.argv[0]] + config_file_arguments + sys.argv[1:]
+            sys.argv[1:1] = config_file_arguments
 
 
 def main():
@@ -555,7 +546,7 @@ def main():
         pass
     else:
         print "\n[openbazaar] Invalid command '" + arguments.command + "'"
-        print "[openbazaar] Valid commands are 'start', 'stop', 'status'."
+        print "[openbazaar] Valid commands are 'start', 'stop'."
         print "\n[openbazaar] Please try again.\n"
 
 if __name__ == '__main__':
