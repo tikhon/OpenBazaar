@@ -19,8 +19,8 @@
 set -e
 
 function command_exists {
-  #this should be a very portable way of checking if something is on the path
-  #usage: "if command_exists foo; then echo it exists; fi"
+  # this should be a very portable way of checking if something is on the path
+  # usage: "if command_exists foo; then echo it exists; fi"
   type "$1" &> /dev/null
 }
 
@@ -43,8 +43,8 @@ function brewUpgrade {
 }
 
 function installMac {
-  #print commands (useful for debugging)
-  #set -x  #disabled because the echos and stdout are verbose enough to see progress
+  # print commands (useful for debugging)
+  # set -x  #disabled because the echos and stdout are verbose enough to see progress
 
   # install brew if it is not installed, otherwise upgrade it
   if ! command_exists brew ; then
@@ -92,7 +92,7 @@ function installMac {
   export CFLAGS="-I$(brew --prefix openssl)/include"
   export LDFLAGS="-L$(brew --prefix openssl)/lib"
 
-  #install python deps inside our virtualenv
+  # install python deps inside our virtualenv
   ./env/bin/pip install -r requirements.txt
 
   doneMessage
@@ -109,7 +109,7 @@ function doneMessage {
 }
 
 function installUbuntu {
-  #print commands
+  # print commands
   set -x
 
   sudo apt-get update
@@ -131,7 +131,8 @@ function installArch {
   set -x
 
   sudo pacman -Sy
-  #sudo pacman -S --needed base-devel #Can conflict with multilib packages. Uncomment this line if you don't already have base-devel installed
+  # sudo pacman -S --needed base-devel
+  # Can conflict with multilib packages. Uncomment this line if you don't already have base-devel installed
   sudo pacman -S --needed python2 python2-pip python2-virtualenv python2-pyzmq rng-tools libjpeg zlib sqlite3 openssl
 
   if [ ! -d "./env" ]; then
@@ -187,7 +188,7 @@ function installRaspbian {
 }
 
 function installPortage {
-  #print commands
+  # print commands
   set -x
 
   sudo emerge -an dev-lang/python:2.7 dev-python/pip pyzmq rng-tools gcc jpeg sys-libs/zlib sqlite3 openssl dev-python/virtualenv
@@ -199,7 +200,7 @@ function installPortage {
 }
 
 function installFedora {
-  #print commands
+  # print commands
   set -x
 
   sudo yum install -y http://linux.ringingliberty.com/bitcoin/f18/x86_64/bitcoin-release-1-4.noarch.rpm

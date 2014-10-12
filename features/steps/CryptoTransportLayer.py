@@ -4,26 +4,32 @@ from zmq.eventloop import ioloop
 
 from node.db_store import Obdb
 from node.setup_db import setup_db
+from node.openbazaar_daemon import OpenBazaarContext
 from node.transport import CryptoTransportLayer
 from features.test_util import ip_address, nickname, get_db_path
 
 port = 12345
 
 
-def create_layers(context, ob_ctx, num_layers):
+def create_layers(context, num_layers):
     layers = []
+
     for i in range(num_layers):
         db_path = get_db_path(i)
         setup_db(db_path)
         # dev_mode is True because otherwise the layer's ip is set to the
         # public ip of the node
+        ob_ctx = OpenBazaarContext.create_default_instance()
+        ob_ctx.dev_mode = True
+        ob_ctx.server_public_ip = ip_address(i)
+        ob_ctx.server_public_port = port
         layers.append(CryptoTransportLayer(ob_ctx, Obdb(db_path)))
     context.layers = layers
 
 
 @given('{num_layers} layers')
-def step_impl(context, ob_ctx, num_layers):
-    create_layers(context, ob_ctx, int(num_layers))
+def step_impl(context, num_layers):
+    create_layers(context, int(num_layers))
 
 
 @when('layer {i} connects to layer {j}')
