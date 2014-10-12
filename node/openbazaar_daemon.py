@@ -144,7 +144,7 @@ class OpenBazaarContext(object):
                 'DISABLE_OPEN_DEFAULT_WEBBROWSER': False,
                 'DISABLE_SQLITE_CRYPT': False,
                 # CRITICAL=50, ERROR=40, WARNING=30, DEBUG=10, NOTSET=0
-                'LOG_LEVEL': 10,
+                'LOG_LEVEL': 30,
                 'NODES': 3,
                 'HTTP_IP': '127.0.0.1',
                 'HTTP_PORT': None,
