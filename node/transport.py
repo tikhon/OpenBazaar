@@ -196,7 +196,7 @@ class CryptoTransportLayer(TransportLayer):
 
         self.bitmessage_api = None
         if (ob_ctx.bm_user, ob_ctx.bm_pass, ob_ctx.bm_port) != (None, None, -1):
-            if not self._connect_to_bitmessage(ob_ctx.bm_user, ob_ctx.bm_pass, ob_ctx.bm_port):
+            if not self._connect_to_bitmessage():
                 self.log.info('Bitmessage not installed or started')
 
         self.market_id = ob_ctx.market_id
@@ -299,10 +299,13 @@ class CryptoTransportLayer(TransportLayer):
                 "market_id": self.market_id
             })
 
-    def _connect_to_bitmessage(self, bm_user, bm_pass, bm_port):
+    def _connect_to_bitmessage(self):
         # Get bitmessage going
         # First, try to find a local instance
         result = False
+        bm_user = self.ob_ctx.bm_user
+        bm_pass = self.ob_ctx.bm_pass
+        bm_port = self.ob_ctx.bm_port
         try:
             self.log.info('[_connect_to_bitmessage] Connecting to Bitmessage on port %s' % bm_port)
             self.bitmessage_api = xmlrpclib.ServerProxy("http://{}:{}@localhost:{}/".format(bm_user, bm_pass, bm_port), verbose=0)
@@ -442,6 +445,12 @@ class CryptoTransportLayer(TransportLayer):
             curve='secp256k1'
         )
 
+        # In case user wants to override with command line passed bitmessage values
+        if self.ob_ctx.bm_user is not None and \
+           self.ob_ctx.bm_pass is not None and \
+           self.ob_ctx.bm_port is not None:
+            self._connect_to_bitmessage()
+
         # self.log.debug('Retrieved Settings: \n%s', pformat(self.settings))
 
     def _generate_new_keypair(self):
@@ -522,7 +531,6 @@ class CryptoTransportLayer(TransportLayer):
     def search_for_my_node(self):
         print 'Searching for myself'
         self.dht._iterativeFind(self.guid, self.dht.knownNodes, 'findNode')
-
 
     def get_crypto_peer(self, guid=None, uri=None, pubkey=None, nickname=None):
         if guid == self.guid:
