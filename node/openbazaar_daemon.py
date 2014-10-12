@@ -44,6 +44,7 @@ class OpenBazaarContext(object):
     and reduces issues of API inconsistencies (as in the order
     in which parameters are passed, which can cause bugs)
     """
+
     def __init__(self,
                  nat_status,
                  server_public_ip,
@@ -116,8 +117,7 @@ class OpenBazaarContext(object):
              "disable_sqlite_crypt": self.disable_sqlite_crypt,
              "enable_ip_checker": self.enable_ip_checker,
              "started_utc_timestamp": self.started_utc_timestamp,
-             "uptime_in_secs": long(time.time()) - long(self.started_utc_timestamp)
-             }
+             "uptime_in_secs": long(time.time()) - long(self.started_utc_timestamp)}
 
         return json.dumps(r).replace(", ", ",\n  ")
 
@@ -152,12 +152,11 @@ class OpenBazaarContext(object):
                 'BITMESSAGE_PASS': None,
                 'BITMESSAGE_PORT': -1,
                 'ENABLE_IP_CHECKER': False,
-                'CONFIG_FILE': None
-                }
+                'CONFIG_FILE': None}
 
     @staticmethod
     def create_default_instance():
-        DEFAULTS = OpenBazaarContext.get_defaults()
+        defaults = OpenBazaarContext.get_defaults()
         return OpenBazaarContext(None,
                                  server_public_ip=defaults['SERVER_IP'],
                                  server_public_port=defaults['SERVER_PORT'],
@@ -184,12 +183,11 @@ class OpenBazaarContext(object):
 class MarketApplication(tornado.web.Application):
     def __init__(self, ob_ctx):
         self.shutdown_mutex = Lock()
-
+        self.ob_ctx = ob_ctx
         db = Obdb(ob_ctx.db_path, ob_ctx.disable_sqlite_crypt)
-
         self.transport = CryptoTransportLayer(ob_ctx, db)
-
         self.market = Market(self.transport, db)
+        self.upnp_mapper = None
 
         peers = ob_ctx.seed_peers if not ob_ctx.seed_mode else []
         self.transport.join_network(peers)
@@ -199,48 +197,69 @@ class MarketApplication(tornado.web.Application):
             (r"/main", MainHandler),
             (r"/html/(.*)", OpenBazaarStaticHandler, {'path': './html'}),
             (r"/ws", WebSocketHandler,
-                dict(transport=self.transport, market_application=self, db=db))
+             dict(transport=self.transport, market_application=self, db=db))
         ]
 
         # TODO: Move debug settings to configuration location
         settings = dict(debug=True)
-        tornado.web.Application.__init__(self, handlers, **settings)
+        super(MarketApplication, self).__init__(handlers, **settings)
+
+    def start_app(self):
+        error = True
+        p2p_port = self.ob_ctx.server_public_port
+
+        if self.ob_ctx.http_port is None:
+            self.ob_ctx.http_port = get_random_free_tcp_port(8889, 8988)
+
+        while error:
+            try:
+                self.listen(self.ob_ctx.http_port, self.ob_ctx.http_ip)
+                error = False
+            except IOError:
+                self.ob_ctx.http_port += 1
+
+        if not self.ob_ctx.disable_upnp:
+            self.setup_upnp_port_mappings(p2p_port)
+        else:
+            print "MarketApplication.listen(): Disabling upnp setup"
 
     def get_transport(self):
         return self.transport
 
-    def setup_upnp_port_mappings(self, http_port, p2p_port):
-        upnp.PortMapper.DEBUG = False
-        print "Setting up UPnP Port Map Entry..."
-        self.upnp_mapper = upnp.PortMapper()
+    def setup_upnp_port_mappings(self, p2p_port):
+        result = False
 
-        # for now let's always clean mappings every time.
-        self.upnp_mapper.clean_my_mappings(p2p_port)
+        if not self.ob_ctx.disable_upnp:
+            upnp.PortMapper.DEBUG = False
+            print "Setting up UPnP Port Map Entry..."
+            self.upnp_mapper = upnp.PortMapper()
+            self.upnp_mapper.clean_my_mappings(p2p_port)
 
-        result_tcp_p2p_mapping = self.upnp_mapper.add_port_mapping(p2p_port,
-                                                                   p2p_port)
-        print ("UPnP TCP P2P Port Map configuration done (%s -> %s) => %s" %
-               (str(p2p_port), str(p2p_port), str(result_tcp_p2p_mapping)))
+            result_tcp_p2p_mapping = self.upnp_mapper.add_port_mapping(p2p_port,
+                                                                       p2p_port)
+            print ("UPnP TCP P2P Port Map configuration done (%s -> %s) => %s" %
+                   (str(p2p_port), str(p2p_port), str(result_tcp_p2p_mapping)))
 
-        result_udp_p2p_mapping = self.upnp_mapper.add_port_mapping(p2p_port,
-                                                                   p2p_port,
-                                                                   'UDP')
-        print ("UPnP UDP P2P Port Map configuration done (%s -> %s) => %s" %
-               (str(p2p_port), str(p2p_port), str(result_udp_p2p_mapping)))
+            result_udp_p2p_mapping = self.upnp_mapper.add_port_mapping(p2p_port,
+                                                                       p2p_port,
+                                                                       'UDP')
+            print ("UPnP UDP P2P Port Map configuration done (%s -> %s) => %s" %
+                   (str(p2p_port), str(p2p_port), str(result_udp_p2p_mapping)))
 
-        result = result_tcp_p2p_mapping and result_udp_p2p_mapping
-        if not result:
-            print "Warning: UPnP was not setup correctly. Try doing a port forward on %s and start the node again with -j" % p2p_port
+            result = result_tcp_p2p_mapping and result_udp_p2p_mapping
+            if not result:
+                print "Warning: UPnP was not setup correctly. Ports could not be automatically mapped."
 
         return result
 
     def cleanup_upnp_port_mapping(self):
-        try:
-            if self.upnp_mapper is not None:
-                print "Cleaning UPnP Port Mapping -> ", \
-                    self.upnp_mapper.clean_my_mappings(self.transport.port)
-        except AttributeError:
-            print "[openbazaar] MarketApplication.clean_upnp_port_mapping() failed!"
+        if not self.ob_ctx.disable_upnp:
+            try:
+                if self.upnp_mapper is not None:
+                    print "Cleaning UPnP Port Mapping -> ", \
+                        self.upnp_mapper.clean_my_mappings(self.transport.port)
+            except AttributeError:
+                print "[openbazaar] MarketApplication.clean_upnp_port_mapping() failed!"
 
     def shutdown(self, x=None, y=None):
         self.shutdown_mutex.acquire()
@@ -250,7 +269,7 @@ class MarketApplication(tornado.web.Application):
         )
         locallogger.info("Received TERMINATE, exiting...")
 
-        # application.get_transport().broadcast_goodbye()
+        # transport.broadcast_goodbye()
         self.cleanup_upnp_port_mapping()
         tornado.ioloop.IOLoop.instance().stop()
 
@@ -270,19 +289,8 @@ def start_io_loop():
         raise
 
 
-def node_starter(ob_ctxs):
-    # This is the target for the the Process which
-    # will spawn the children processes that spawn
-    # the actual OpenBazaar instances.
-
-    for ob_ctx in ob_ctxs:
-        p = multiprocessing.Process(target=start_node, args=(ob_ctx,), name="Process::openbazaar_daemon::target(start_node)")
-        p.daemon = False   # python has to wait for this user thread to end.
-        p.start()
-
-
-def start_node(ob_ctx):
-    print "Start Node!"
+def create_logger(ob_ctx):
+    logger = None
     try:
         logging.basicConfig(
             level=int(ob_ctx.log_level),
@@ -290,7 +298,7 @@ def start_node(ob_ctx):
             filename=ob_ctx.log_path
         )
         logging._defaultFormatter = logging.Formatter(u'%(message)s')
-        locallogger = logging.getLogger('[%s] %s' % (ob_ctx.market_id, 'root'))
+        logger = logging.getLogger('[%s] %s' % (ob_ctx.market_id, 'root'))
 
         handler = logging.handlers.RotatingFileHandler(
             ob_ctx.log_path,
@@ -298,42 +306,46 @@ def start_node(ob_ctx):
             maxBytes=50000000,
             backupCount=1
         )
-        locallogger.addHandler(handler)
+        logger.addHandler(handler)
     except Exception as e:
         print "Could not setup logger, continuing: ", e.message
+    return logger
 
-    application = MarketApplication(ob_ctx)
+def log_openbazaar_start(logger, ob_ctx):
+    logger.info("Started OpenBazaar Web App at http://%s:%s" % (ob_ctx.http_ip, ob_ctx.http_port))
+    print "Started OpenBazaar Web App at http://%s:%s" % \
+          (ob_ctx.http_ip, ob_ctx.http_port)
 
-    error = True
-    p2p_port = ob_ctx.server_public_port
 
-    if ob_ctx.http_port is None:
-        ob_ctx.http_port = get_random_free_tcp_port(8889, 8988)
-
-    while error:
-        try:
-            application.listen(ob_ctx.http_port, ob_ctx.http_ip)
-            error = False
-        except Exception:
-            ob_ctx.http_port += 1
-
-    if not ob_ctx.disable_upnp:
-        application.setup_upnp_port_mappings(ob_ctx.http_port, p2p_port)
-    else:
-        print "Disabling upnp setup"
-
-    locallogger.info("Started OpenBazaar Web App at http://%s:%s" %
-                     (ob_ctx.http_ip, ob_ctx.http_port))
-
-    print "Started OpenBazaar Web App at http://%s:%s" % (ob_ctx.http_ip, ob_ctx.http_port)
-
+def attempt_browser_open(ob_ctx):
     if not ob_ctx.disable_open_browser:
         open_default_webbrowser('http://%s:%s' % (ob_ctx.http_ip, ob_ctx.http_port))
 
+
+def setup_signal_handlers(application):
     try:
         signal.signal(signal.SIGTERM, application.shutdown)
     except ValueError:
-        # not the main thread
         pass
 
+
+def node_starter(ob_ctxs):
+    # This is the target for the the Process which
+    # will spawn the children processes that spawn
+    # the actual OpenBazaar instances.
+
+    for ob_ctx in ob_ctxs:
+        p = multiprocessing.Process(target=start_node, args=(ob_ctx,),
+                                    name="Process::openbazaar_daemon::target(start_node)")
+        p.daemon = False  # python has to wait for this user thread to end.
+        p.start()
+
+
+def start_node(ob_ctx):
+    logger = create_logger(ob_ctx)
+    application = MarketApplication(ob_ctx)
+    setup_signal_handlers(application)
+    application.start_app()
+    log_openbazaar_start(logger, ob_ctx)
+    attempt_browser_open(ob_ctx)
     start_io_loop()

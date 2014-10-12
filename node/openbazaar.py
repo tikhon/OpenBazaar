@@ -198,6 +198,7 @@ def create_openbazaar_contexts(arguments, nat_status):
     file will be read first, and whatever other parameters have been
     passed via the command line will override the settings on the
     configuration file.
+    :rtype : list of [OpenBazaarContext]
     """
     defaults = OpenBazaarContext.get_defaults()
 
@@ -376,7 +377,7 @@ def create_openbazaar_contexts(arguments, nat_status):
                                              disable_open_browser,
                                              disable_sqlite_crypt,
                                              enable_ip_checker))
-            i = i + 1
+            i += 1
 
     return ob_ctxs
 
@@ -422,6 +423,7 @@ def start(arguments):
         assert arguments.server_public_ip is not None
 
     ob_ctxs = create_openbazaar_contexts(arguments, nat_status)
+
     for ob_ctx in ob_ctxs:
         ensure_database_setup(ob_ctx, defaults)
 
@@ -458,7 +460,7 @@ def load_config_file_arguments(parser):
     """Loads config file's flags into sys.argv for further argument parsing."""
     parsed_arguments = parser.parse_args()
     if parsed_arguments.config_file is not None:
-        config_file_lines = []
+        config_file_lines = None
         with open(parsed_arguments.config_file) as fp:
             try:
                 config_file_lines = fp.readlines()

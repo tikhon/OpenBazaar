@@ -112,7 +112,7 @@ class TestTransportLayerProfile(unittest.TestCase):
         self.assertEqual(
             tl.get_profile(),
             protocol.hello_request({
-                'uri': 'tcp://1.1.1.1:12345'
+                'uri': 'tcp://127.0.0.1:12345'
             })
         )
 
