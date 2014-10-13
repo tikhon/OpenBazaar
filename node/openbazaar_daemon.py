@@ -48,8 +48,8 @@ class OpenBazaarContext(object):
 
     def __init__(self,
                  nat_status,
-                 server_public_ip,
-                 server_public_port,
+                 server_ip,
+                 server_port,
                  http_ip,
                  http_port,
                  db_path,
@@ -69,8 +69,8 @@ class OpenBazaarContext(object):
                  disable_sqlite_crypt,
                  enable_ip_checker):
         self.nat_status = nat_status
-        self.server_public_ip = server_public_ip
-        self.server_public_port = server_public_port
+        self.server_ip = server_ip
+        self.server_port = server_port
         self.http_ip = http_ip
         self.http_port = http_port
         self.db_path = db_path
@@ -98,8 +98,8 @@ class OpenBazaarContext(object):
         r = {"nat_status.nat_type": self.nat_status['nat_type'] if self.nat_status is not None else None,
              "nat_status.external_ip": self.nat_status['external_ip'] if self.nat_status is not None else None,
              "nat_status.external_port": self.nat_status['external_port'] if self.nat_status is not None else None,
-             "server_public_ip": self.server_public_ip,
-             "server_public_port": self.server_public_port,
+             "server_ip": self.server_ip,
+             "server_port": self.server_port,
              "http_ip": self.http_ip,
              "http_port": self.http_port,
              "log_path": self.log_path,
@@ -135,18 +135,19 @@ class OpenBazaarContext(object):
                 'DEVELOPMENT': False,
                 'DEV_NODES': 3,
                 'SEED_MODE': False,
-                'SEED_HOSTNAMES': ['seed.openbazaar.org',
-                                   'seed2.openbazaar.org',
-                                   'seed.openlabs.co',
-                                   'us.seed.bizarre.company',
-                                   'eu.seed.bizarre.company'],
+                'SEEDS': [
+                    'seed.openbazaar.org',
+                    'seed2.openbazaar.org',
+                    'seed.openlabs.co',
+                    'us.seed.bizarre.company',
+                    'eu.seed.bizarre.company'
+                ],
                 'DISABLE_UPNP': False,
                 'DISABLE_STUN_CHECK': False,
-                'DISABLE_OPEN_DEFAULT_WEBBROWSER': False,
+                'DISABLE_OPEN_BROWSER': False,
                 'DISABLE_SQLITE_CRYPT': False,
                 # CRITICAL=50, ERROR=40, WARNING=30, DEBUG=10, NOTSET=0
                 'LOG_LEVEL': 30,
-                'NODES': 3,
                 'HTTP_IP': '127.0.0.1',
                 'HTTP_PORT': None,
                 'BITMESSAGE_USER': None,
@@ -159,10 +160,10 @@ class OpenBazaarContext(object):
     def create_default_instance():
         defaults = OpenBazaarContext.get_defaults()
         return OpenBazaarContext(None,
-                                 server_public_ip=defaults['SERVER_IP'],
-                                 server_public_port=defaults['SERVER_PORT'],
-                                 http_ip=defaults['SERVER_IP'],
-                                 http_port=defaults['SERVER_PORT'],
+                                 server_ip=defaults['SERVER_IP'],
+                                 server_port=defaults['SERVER_PORT'],
+                                 http_ip=defaults['HTTP_IP'],
+                                 http_port=defaults['HTTP_PORT'],
                                  db_path=os.path.join(defaults['DB_DIR'], defaults['DB_FILE']),
                                  log_path=os.path.join(defaults['LOG_DIR'], defaults['LOG_FILE']),
                                  log_level=defaults['LOG_LEVEL'],
@@ -170,13 +171,13 @@ class OpenBazaarContext(object):
                                  bm_user=defaults['BITMESSAGE_USER'],
                                  bm_pass=defaults['BITMESSAGE_PASS'],
                                  bm_port=defaults['BITMESSAGE_PORT'],
-                                 seed_peers=defaults['SEED_HOSTNAMES'],
+                                 seed_peers=defaults['SEEDS'],
                                  seed_mode=defaults['SEED_MODE'],
                                  dev_mode=defaults['DEVELOPMENT'],
                                  dev_nodes=defaults['DEV_NODES'],
                                  disable_upnp=defaults['DISABLE_UPNP'],
                                  disable_stun_check=defaults['DISABLE_STUN_CHECK'],
-                                 disable_open_browser=defaults['DISABLE_OPEN_DEFAULT_WEBBROWSER'],
+                                 disable_open_browser=defaults['DISABLE_OPEN_BROWSER'],
                                  disable_sqlite_crypt=defaults['DISABLE_SQLITE_CRYPT'],
                                  enable_ip_checker=defaults['ENABLE_IP_CHECKER'])
 
@@ -219,7 +220,7 @@ class MarketApplication(tornado.web.Application):
         self.ob_ctx.http_port = sockets[0].getsockname()[1]
 
         if not self.ob_ctx.disable_upnp:
-            self.setup_upnp_port_mappings(self.ob_ctx.server_public_port)
+            self.setup_upnp_port_mappings(self.ob_ctx.server_port)
         else:
             print "MarketApplication.start_app(): Disabling upnp setup"
 

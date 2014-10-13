@@ -23,8 +23,8 @@ def create_layers(context, num_layers):
         # public ip of the node
         ob_ctx = OpenBazaarContext.create_default_instance()
         ob_ctx.dev_mode = True
-        ob_ctx.server_public_ip = ip_address(i)
-        ob_ctx.server_public_port = port
+        ob_ctx.server_ip = ip_address(i)
+        ob_ctx.server_port = port
         layers.append(CryptoTransportLayer(ob_ctx, Obdb(db_path)))
     context.layers = layers
 

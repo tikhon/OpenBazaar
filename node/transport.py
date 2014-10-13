@@ -31,8 +31,8 @@ class TransportLayer(object):
         self.peers = {}
         self.callbacks = defaultdict(list)
         self.timeouts = []
-        self.port = ob_ctx.server_public_port
-        self.ip = ob_ctx.server_public_ip
+        self.port = ob_ctx.server_port
+        self.ip = ob_ctx.server_ip
         self.guid = guid
         self.market_id = ob_ctx.market_id
         self.nickname = nickname
@@ -197,8 +197,8 @@ class CryptoTransportLayer(TransportLayer):
 
         self.market_id = ob_ctx.market_id
         self.nick_mapping = {}
-        self.uri = network_util.get_peer_url(ob_ctx.server_public_ip, ob_ctx.server_public_port)
-        self.ip = ob_ctx.server_public_ip
+        self.uri = network_util.get_peer_url(ob_ctx.server_ip, ob_ctx.server_port)
+        self.ip = ob_ctx.server_ip
         self.nickname = ""
         self.dev_mode = ob_ctx.dev_mode
 
@@ -267,7 +267,7 @@ class CryptoTransportLayer(TransportLayer):
             if not new_ip or new_ip == self.ip:
                 return
 
-            self.ob_ctx.server_public_ip = new_ip
+            self.ob_ctx.server_ip = new_ip
             self.ip = new_ip
 
             if self.listener is not None:

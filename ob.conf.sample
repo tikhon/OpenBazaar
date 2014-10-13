@@ -4,4 +4,4 @@
 # so you can easily comment them out
 --disable-upnp # inline comments are supported
 -S
---server-public-port 9999 --disable-stun-check # multiple arguments per line supported
+--server-port 9999 --disable-stun-check # multiple arguments per line supported

@@ -1,29 +1,35 @@
 #!./env/bin/python
-# OpenBazaar's launcher script.
-# Authors: Angel Leon (@gubatron)
+"""
+OpenBazaar launcher script.
+Authors: Angel "gubatron" Leon
+"""
 
-import os
-import sys
 import argparse
 import multiprocessing
+import os
+import sys
+import threading
+
 import psutil
-from openbazaar_daemon import node_starter
-from openbazaar_daemon import OpenBazaarContext
-from setup_db import setup_db
+
 from network_util import init_aditional_STUN_servers, check_NAT_status
-from threading import Thread
+from openbazaar_daemon import node_starter, OpenBazaarContext
+import setup_db
 
 
 def create_argument_parser():
     defaults = OpenBazaarContext.get_defaults()
 
-    parser = argparse.ArgumentParser(usage=usage(),
-                                     add_help=False)
+    parser = argparse.ArgumentParser(
+        description='OpenBazaar launcher script',
+        usage=usage(),
+        add_help=False
+    )
 
-    parser.add_argument('-i', '--server-public-ip',
+    parser.add_argument('-i', '--server-ip',
                         default=defaults['SERVER_IP'])
 
-    parser.add_argument('-p', '--server-public-port',
+    parser.add_argument('-p', '--server-port',
                         default=defaults['SERVER_PORT'],
                         type=int)
 
@@ -40,7 +46,7 @@ def create_argument_parser():
     parser.add_argument('--log-level',
                         default=defaults['LOG_LEVEL'])
 
-    parser.add_argument('-d', '--development-mode',
+    parser.add_argument('-d', '--development',
                         action='store_true',
                         default=defaults['DEVELOPMENT'])
 
@@ -50,15 +56,15 @@ def create_argument_parser():
 
     parser.add_argument('-n', '--dev-nodes',
                         type=int,
-                        default=-1)
+                        default=defaults['DEV_NODES'])
 
-    parser.add_argument('--bitmessage-user', '--bmuser',
+    parser.add_argument('--bitmessage-user',
                         default=defaults['BITMESSAGE_USER'])
 
-    parser.add_argument('--bitmessage-pass', '--bmpass',
+    parser.add_argument('--bitmessage-pass',
                         default=defaults['BITMESSAGE_PASS'])
 
-    parser.add_argument('--bitmessage-port', '--bmport',
+    parser.add_argument('--bitmessage-port',
                         type=int,
                         default=defaults['BITMESSAGE_PORT'])
 
@@ -79,11 +85,11 @@ def create_argument_parser():
 
     parser.add_argument('-s', '--seeds',
                         nargs='*',
-                        default=defaults['SEED_HOSTNAMES'])
+                        default=defaults['SEEDS'])
 
     parser.add_argument('--disable-open-browser',
                         action='store_true',
-                        default=defaults['DISABLE_OPEN_DEFAULT_WEBBROWSER'])
+                        default=defaults['DISABLE_OPEN_BROWSER'])
 
     parser.add_argument('--disable-sqlite-crypt',
                         action='store_true',
@@ -96,7 +102,9 @@ def create_argument_parser():
                         action='store_true',
                         default=defaults['ENABLE_IP_CHECKER'])
 
-    parser.add_argument('command')
+    # Add valid commands.
+    parser.add_argument('command', choices=('start', 'stop'))
+
     return parser
 
 
@@ -113,14 +121,14 @@ openbazaar [options] <command>
         openbazaar --disable-upnp --seed-mode start
         openbazaar --enable-ip-checker start
         openbazaar -d --dev-nodes 4 -j --disable-stun-check start
-        openbazaar --development-mode -n 4 --disable-upnp start
+        openbazaar --development -n 4 --disable-upnp start
 
     OPTIONS
-    -i, --server-public-ip <ip address>
+    -i, --server-ip <ip address>
         Server public IP
 
-    -p, --server-public-port <port number>
-        Server public (P2P) port (default 12345)
+    -p, --server-port <port number>
+        Server public (P2P) port (default: 12345)
 
     -k, --http-ip <ip address>
         Web interface IP (default 127.0.0.1; use 0.0.0.0 for any)
@@ -141,7 +149,7 @@ openbazaar [options] <command>
           40 - ERROR
           50 - CRITICAL
 
-    -d, --development-mode
+    -d, --development
         Enable development mode
 
     -n, --dev-nodes
@@ -153,13 +161,13 @@ openbazaar [options] <command>
     --disable-sqlite-crypt
         Disable encryption on sqlite database
 
-    --bitmessage-user, --bmuser
+    --bitmessage-user
         Bitmessage API username
 
-    --bitmessage-pass, --bmpass
+    --bitmessage-pass
         Bitmessage API password
 
-    --bitmessage-port, --bmport
+    --bitmessage-port
         Bitmessage API port
 
     -u, --market-id
@@ -183,7 +191,6 @@ openbazaar [options] <command>
     --enable-ip-checker
         Enable periodic IP address checking.
         Useful in case you expect your IP to change rapidly.
-
 """
 
 
@@ -202,12 +209,12 @@ def create_openbazaar_contexts(arguments, nat_status):
     """
     defaults = OpenBazaarContext.get_defaults()
 
-    server_public_ip = defaults['SERVER_IP']
-    if server_public_ip != arguments.server_public_ip:
-        server_public_ip = arguments.server_public_ip
+    server_ip = defaults['SERVER_IP']
+    if server_ip != arguments.server_ip:
+        server_ip = arguments.server_ip
     elif nat_status is not None:
         print nat_status
-        server_public_ip = nat_status['external_ip']
+        server_ip = nat_status['external_ip']
 
     # "I'll purposefully leave these seemingly useless Schlemiel-styled
     # comments as visual separators to denote the beginning and end of
@@ -216,13 +223,13 @@ def create_openbazaar_contexts(arguments, nat_status):
     # annoy you." -Gubatron :)
 
     # market port
-    server_public_port = defaults['SERVER_PORT']
-    if arguments.server_public_port is not None:
-        server_public_port = arguments.server_public_port
+    server_port = defaults['SERVER_PORT']
+    if arguments.server_port is not None and\
+        server_port = arguments.server_port
     elif nat_status is not None:
         # override the port for p2p communications with the one
         # obtained from the STUN server.
-        server_public_port = nat_status['external_port']
+        server_port = nat_status['external_port']
 
     # http ip
     http_ip = defaults['HTTP_IP']
@@ -272,7 +279,7 @@ def create_openbazaar_contexts(arguments, nat_status):
         bm_port = arguments.bitmessage_port
 
     # seed_peers
-    seed_peers = defaults['SEED_HOSTNAMES']
+    seed_peers = defaults['SEEDS']
     if len(arguments.seeds) > 0:
         seed_peers = seed_peers + arguments.seeds
 
@@ -281,12 +288,12 @@ def create_openbazaar_contexts(arguments, nat_status):
 
     # dev_mode
     dev_mode = defaults['DEVELOPMENT']
-    if arguments.development_mode != dev_mode:
-        dev_mode = arguments.development_mode
+    if arguments.development != dev_mode:
+        dev_mode = arguments.development
 
     # dev nodes
     dev_nodes = -1
-    if arguments.development_mode:
+    if arguments.development:
         dev_nodes = defaults['DEV_NODES']
         if arguments.dev_nodes != dev_nodes:
             dev_nodes = arguments.dev_nodes
@@ -308,7 +315,7 @@ def create_openbazaar_contexts(arguments, nat_status):
         disable_stun_check = True
 
     # disable open browser
-    disable_open_browser = defaults['DISABLE_OPEN_DEFAULT_WEBBROWSER']
+    disable_open_browser = defaults['DISABLE_OPEN_BROWSER']
     if arguments.disable_open_browser:
         disable_open_browser = True
 
@@ -327,8 +334,8 @@ def create_openbazaar_contexts(arguments, nat_status):
     if not dev_mode:
         # we return a list of a single element, a production node.
         ob_ctxs.append(OpenBazaarContext(nat_status,
-                                         server_public_ip,
-                                         server_public_port,
+                                         server_ip,
+                                         server_port,
                                          http_ip,
                                          http_port,
                                          db_path,
@@ -356,8 +363,8 @@ def create_openbazaar_contexts(arguments, nat_status):
             db_dev_filename = defaults['DEV_DB_FILE'].format(i)
             db_path = os.path.join(db_dirname, db_dev_filename)
             ob_ctxs.append(OpenBazaarContext(nat_status,
-                                             server_public_ip,
-                                             server_public_port + i - 1,
+                                             server_ip,
+                                             server_port + i - 1,
                                              http_ip,
                                              http_port,
                                              db_path,
@@ -399,8 +406,8 @@ def ensure_database_setup(ob_ctx, defaults):
     if not os.path.exists(db_path):
         # setup the database if file not there.
         print "[openbazaar] bootstrapping database ", os.path.basename(db_path)
-        setup_db(db_path)
-        print "[openbazaar] database setup completed\n"
+        setup_db.setup_db(db_path)
+        print "[openbazaar] database setup completed"
 
 
 def start(arguments):
@@ -408,7 +415,7 @@ def start(arguments):
     init_aditional_STUN_servers()
 
     # Turn off checks that don't make sense in development mode
-    if arguments.development_mode:
+    if arguments.development:
         print "DEVELOPMENT MODE! (Disable STUN check and UPnP mappings)"
         arguments.disable_stun_check = True
         arguments.disable_upnp = True
@@ -419,16 +426,14 @@ def start(arguments):
         print "Checking NAT Status..."
         nat_status = check_NAT_status()
     else:
-        assert arguments.server_public_ip is not None
+        assert arguments.server_ip, "Need public IP if not using STUN."
 
     ob_ctxs = create_openbazaar_contexts(arguments, nat_status)
 
     for ob_ctx in ob_ctxs:
         ensure_database_setup(ob_ctx, defaults)
 
-    p = multiprocessing.Process(target=node_starter,
-                                args=(ob_ctxs,))
-    p.start()
+    multiprocessing.Process(target=node_starter, args=(ob_ctxs,)).start()
 
 
 def terminate_or_kill_process(process):
@@ -449,26 +454,28 @@ def stop():
             if my_pid != int(pdict['pid']) and pdict['cmdline'] is not None:
                 cmd = ' '.join(pdict['cmdline'])
                 if cmd.find('openbazaar') > -1 and cmd.find('start') > -1:
-                    Thread(target=terminate_or_kill_process,
-                           args=(process,)).start()
+                    threading.Thread(
+                        target=terminate_or_kill_process,
+                        args=(process,)
+                    ).start()
         except psutil.NoSuchProcess:
             pass
 
 
 def load_config_file_arguments(parser):
-    """Loads config file's flags into sys.argv for further argument parsing."""
+    """
+    Load configuration file into sys.argv for further argument parsing.
+    """
     parsed_arguments = parser.parse_args()
     if parsed_arguments.config_file is not None:
-        config_file_lines = None
-        with open(parsed_arguments.config_file) as fp:
-            try:
+        try:
+            with open(parsed_arguments.config_file) as fp:
                 config_file_lines = fp.readlines()
-            except Exception as e:
-                print "notice: ignored invalid config file: %s" % (
-                    parsed_arguments.config_file
-                )
-                print e
-                return
+        except IOError as e:
+            print "NOTICE: Ignoring invalid config file: ",
+            print parsed_arguments.config_file
+            print e
+            return
 
         # in case user entered config flags
         # in multiple lines, we'll keep only
@@ -503,18 +510,14 @@ def main():
     load_config_file_arguments(parser)
     arguments = parser.parse_args()
 
-    print "Command: '" + arguments.command + "'"
-
     if arguments.command == 'start':
         start(arguments)
     elif arguments.command == 'stop':
         stop()
-    elif arguments.command == 'status':
-        pass
     else:
-        print "\n[openbazaar] Invalid command '" + arguments.command + "'"
+        print "[openbazaar] Invalid command '%s'" % arguments.command
         print "[openbazaar] Valid commands are 'start', 'stop'."
-        print "\n[openbazaar] Please try again.\n"
+
 
 if __name__ == '__main__':
     main()
