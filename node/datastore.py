@@ -14,10 +14,12 @@ class DataStore(UserDict.DictMixin, object):
 
     def keys(self):
         """ Return a list of the keys in this data store """
+        raise NotImplementedError
 
     def lastPublished(self, key):
         """ Get the time the C{(key, value)} pair identified by C{key}
         was last published """
+        raise NotImplementedError
 
     def originalPublisherID(self, key):
         """ Get the original publisher of the data's node ID
@@ -28,19 +30,23 @@ class DataStore(UserDict.DictMixin, object):
         @return: Return the node ID of the original publisher of the
         C{(key, value)} pair identified by C{key}.
         """
+        raise NotImplementedError
 
     def originalPublishTime(self, key):
         """ Get the time the C{(key, value)} pair identified by C{key}
         was originally published """
+        raise NotImplementedError
 
     def setItem(self, key, value, lastPublished, originallyPublished, originalPublisherID, market_id):
         """ Set the value of the (key, value) pair identified by C{key};
         this should set the "last published" value for the (key, value)
         pair to the current time
         """
+        raise NotImplementedError
 
     def __getitem__(self, key):
         """ Get the value identified by C{key} """
+        raise NotImplementedError
 
     def __setitem__(self, key, value):
         """
@@ -51,12 +57,13 @@ class DataStore(UserDict.DictMixin, object):
 
     def __delitem__(self, key):
         """ Delete the specified key (and its value) """
+        raise NotImplementedError
 
 
 class SqliteDataStore(DataStore):
     """Sqlite database-based datastore."""
     def __init__(self, db_connection):
-        super(SqliteDataStore, self).__init__(self)
+        super(SqliteDataStore, self).__init__()
         self.db = db_connection
         self.log = logging.getLogger(self.__class__.__name__)
 
