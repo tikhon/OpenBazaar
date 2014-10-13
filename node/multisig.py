@@ -70,7 +70,7 @@ class Multisig(object):
     def create_unsigned_transaction(self, destination, finished_cb):
         def fetched(ec, history):
             if ec is not None:
-                self.log.error("Error fetching history: %s" % ec)
+                self.log.error("Error fetching history: %s", ec)
                 return
             self._fetched(history, destination, finished_cb)
 

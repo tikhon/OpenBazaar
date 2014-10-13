@@ -117,7 +117,7 @@ class ProtocolHandler(object):
 
         sin = page.get('sin')
 
-        self.log.info("Received store info from node: %s" % page)
+        self.log.info("Received store info from node: %s", page)
 
         if sin and page:
             self.market.pages[sin] = page
@@ -125,9 +125,8 @@ class ProtocolHandler(object):
         # TODO: allow async calling in different thread
         def reputation_pledge_retrieved(amount, page):
             self.log.debug(
-                'Received reputation pledge amount %s for guid %s' % (
-                    amount, guid
-                )
+                'Received reputation pledge amount %s for guid %s',
+                amount, guid
             )
             SATOSHIS_IN_BITCOIN = 100000000
             bitcoins = float(amount) / SATOSHIS_IN_BITCOIN
@@ -203,7 +202,7 @@ class ProtocolHandler(object):
         return "contracts" in data
 
     def on_listing_results(self, msg):
-        self.log.debug('Found results %s' % msg)
+        self.log.debug('Found results %s', msg)
         self.send_to_client(None, {
             "type": "store_contracts",
             "products": msg['contracts']
@@ -224,7 +223,7 @@ class ProtocolHandler(object):
         return True
 
     def on_listing_result(self, msg):
-        self.log.debug('Found result %s' % msg)
+        self.log.debug('Found result %s', msg)
         self.send_to_client(None, {
             "type": "store_contract",
             "contract": msg
@@ -238,12 +237,12 @@ class ProtocolHandler(object):
         self.send_to_client(None, {"type": "load_page"})
 
     def client_add_trusted_notary(self, socket_handler, msg):
-        self.log.info('Adding trusted notary %s' % msg)
+        self.log.info('Adding trusted notary %s', msg)
         self.market.add_trusted_notary(msg.get('guid'), msg.get('nickname'))
         # self.send_to_client(None, {"type": "load_page"})
 
     def client_add_guid(self, socket_handler, msg):
-        self.log.info('Adding node by guid %s' % msg)
+        self.log.info('Adding node by guid %s', msg)
 
         def cb(msg):
             self.get_peers()
@@ -251,13 +250,13 @@ class ProtocolHandler(object):
         self.transport.dht.iterativeFindNode(msg.get('guid'), cb)
 
     def client_remove_trusted_notary(self, socket_handler, msg):
-        self.log.info('Removing trusted notary %s' % msg)
+        self.log.info('Removing trusted notary %s', msg)
         self.market.remove_trusted_notary(msg.get('guid'))
 
     def client_get_notaries(self, socket_handler, msg):
         self.log.debug('Retrieving notaries')
         notaries = self.market.get_notaries()
-        self.log.debug('Getting notaries %s' % notaries)
+        self.log.debug('Getting notaries %s', notaries)
         self.send_to_client(None, {
             "type": "settings_notaries",
             "notaries": notaries
@@ -313,31 +312,16 @@ class ProtocolHandler(object):
         self.timeouts.append(query_id)
 
         def cb(msg, query_id):
-            self.log.info('Received a query page response: %s' % query_id)
+            self.log.info('Received a query page response: %s', query_id)
 
         self.market.query_page(
             findGUID,
             lambda msg, query_id=query_id: cb(msg, query_id)
         )
 
-        # UNUSED
-        # def unreachable_market(query_id):
-        #     self.log.info('Cannot reach market, try port forwarding')
-        #     if query_id in self.timeouts:
-        #         self.log.info('Unreachable Market: %s' % msg)
-        #         for peer in self.transport.dht.activePeers:
-        #             if peer.guid == findGUID:
-        #                 self.transport.dht.activePeers.remove(peer)
-        #         self.refresh_peers()
-
-        #  self.loop.add_timeout(
-        #        time.time() + .5,
-        #        lambda query_id=query_id: unreachable_market(query_id)
-        #  )
-
     def client_query_orders(self, socket_handler=None, msg=None):
 
-        self.log.info("Querying for Orders %s " % msg)
+        self.log.info("Querying for Orders %s", msg)
 
         if 'page' in msg:
             page = msg['page']
@@ -381,7 +365,7 @@ class ProtocolHandler(object):
 
         # Query bitmessage for messages
         messages = self.market.get_messages()
-        self.log.info('Bitmessages: %s' % messages)
+        self.log.info('Bitmessages: %s', messages)
 
         self.send_to_client(None, {"type": "messages", "messages": messages})
 
@@ -410,23 +394,22 @@ class ProtocolHandler(object):
         self.send_to_client(None, {"type": "orderinfo", "order": order})
 
     def client_update_settings(self, socket_handler, msg):
-        # self.log.info("Updating settings: %s" % msg)
         self.send_to_client(None, {"type": "settings", "values": msg})
         if msg['settings'].get('btc_pubkey'):
             del msg['settings']['btc_pubkey']
         self.market.save_settings(msg['settings'])
 
     def client_create_contract(self, socket_handler, contract):
-        self.log.info("New Contract: %s" % contract)
+        self.log.info("New Contract: %s", contract)
         self.market.save_contract(contract)
 
     def client_remove_contract(self, socket_handler, msg):
-        self.log.info("Remove contract: %s" % msg)
+        self.log.info("Remove contract: %s", msg)
         self.market.remove_contract(msg)
 
     def client_pay_order(self, socket_handler, msg):
 
-        self.log.info("Marking Order as Paid: %s" % msg)
+        self.log.info("Marking Order as Paid: %s", msg)
         order = self.market.orders.get_order(msg['orderId'])
 
         order['shipping_address'] = self.market.shipping_address()
@@ -436,7 +419,7 @@ class ProtocolHandler(object):
 
     def client_ship_order(self, socket_handler, msg):
 
-        self.log.info("Shipping order out: %s" % msg)
+        self.log.info("Shipping order out: %s", msg)
 
         order = self.market.orders.get_order(msg['orderId'])
 
@@ -460,7 +443,7 @@ class ProtocolHandler(object):
         )
         offer_data_json = offer_data[:index_of_seller_signature]
         offer_data_json = json.loads(offer_data_json)
-        self.log.info('Offer Data: %s' % offer_data_json)
+        self.log.info('Offer Data: %s', offer_data_json)
 
         # Find Buyer Data in Contract
         bid_data_index = offer_data.find(
@@ -508,7 +491,7 @@ class ProtocolHandler(object):
                 private_key = settings.get('privkey')
 
                 if ec is not None:
-                    self.log.error("Error fetching history: %s" % ec)
+                    self.log.error("Error fetching history: %s", ec)
                     # TODO: Send error message to GUI
                     return
 
@@ -533,17 +516,19 @@ class ProtocolHandler(object):
 
                 signatures = [multisign(tx, x, script, private_key) for x in range(len(inputs))]
 
-                self.market.release_funds_to_merchant(buyer['buyer_order_id'], tx, script, signatures, order.get('merchant'))
+                self.market.release_funds_to_merchant(
+                    buyer['buyer_order_id'], tx, script, signatures, order.get('merchant')
+                )
 
             def get_history():
                 client.fetch_history(multi_address, lambda ec, history, order=order: cb(ec, history, order))
 
             Thread(target=get_history).start()
         except Exception as e:
-            self.log.error('%s' % e)
+            self.log.error('%s', e)
 
     def client_release_payment(self, socket_handler, msg):
-        self.log.info('Releasing payment to Merchant %s' % msg)
+        self.log.info('Releasing payment to Merchant %s', msg)
 
         order = self.market.orders.get_order(msg['orderId'])
         contract = order['signed_contract_body']
@@ -555,7 +540,7 @@ class ProtocolHandler(object):
         )
         offer_data_json = offer_data[0:index_of_seller_signature]
         offer_data_json = json.loads(offer_data_json)
-        self.log.info('Offer Data: %s' % offer_data_json)
+        self.log.info('Offer Data: %s', offer_data_json)
 
         # Find Buyer Data in Contract
         bid_data_index = offer_data.find(
@@ -578,7 +563,7 @@ class ProtocolHandler(object):
         notary_data_json = "{"
         notary_data_json += offer_data[notary_data_index:end_of_notary_index]
         notary_data_json = json.loads(notary_data_json)
-        self.log.info('Notary Data: %s' % notary_data_json)
+        self.log.info('Notary Data: %s', notary_data_json)
 
         try:
             client = obelisk.ObeliskOfLightClient(
@@ -599,15 +584,11 @@ class ProtocolHandler(object):
             multi_address = scriptaddr(script)
 
             def cb(ec, history, order):
-
-                # Debug
-                # self.log.info('%s %s' % (ec, history))
-
                 settings = self.market.get_settings()
                 private_key = settings.get('privkey')
 
                 if ec is not None:
-                    self.log.error("Error fetching history: %s" % ec)
+                    self.log.error("Error fetching history: %s", ec)
                     # TODO: Send error message to GUI
                     return
 
@@ -656,7 +637,7 @@ class ProtocolHandler(object):
             Thread(target=get_history).start()
 
         except Exception as e:
-            self.log.error('%s' % e)
+            self.log.error('%s', e)
 
     def validate_on_release_funds_tx(self, *data):
         self.log.debug('Validating on release funds tx message.')
@@ -677,7 +658,7 @@ class ProtocolHandler(object):
         )
         offer_data_json = offer_data[0:index_of_seller_signature]
         offer_data_json = json.loads(offer_data_json)
-        self.log.info('Offer Data: %s' % offer_data_json)
+        self.log.info('Offer Data: %s', offer_data_json)
 
         # Find Buyer Data in Contract
         bid_data_index = offer_data.find(
@@ -700,7 +681,7 @@ class ProtocolHandler(object):
         notary_data_json = "{"
         notary_data_json += offer_data[notary_data_index:end_of_notary_index]
         notary_data_json = json.loads(notary_data_json)
-        self.log.info('Notary Data: %s' % notary_data_json)
+        self.log.info('Notary Data: %s', notary_data_json)
 
         try:
             client = obelisk.ObeliskOfLightClient(
@@ -712,12 +693,8 @@ class ProtocolHandler(object):
             multi_addr = scriptaddr(script)
 
             def cb(ec, history, order):
-
-                # Debug
-                # self.log.info('%s %s' % (ec, history))
-
                 if ec is not None:
-                    self.log.error("Error fetching history: %s" % ec)
+                    self.log.error("Error fetching history: %s", ec)
                     # TODO: Send error message to GUI
                     return
 
@@ -764,7 +741,7 @@ class ProtocolHandler(object):
             Thread(target=get_history).start()
 
         except Exception as e:
-            self.log.error('%s' % e)
+            self.log.error('%s', e)
 
     def client_generate_secret(self, socket_handler, msg):
         self.transport._generate_new_keypair()
@@ -783,11 +760,10 @@ class ProtocolHandler(object):
     # TODO: multi-faceted search support
     def client_search(self, socket_handler, msg):
 
-        self.log.info("[Search] %s" % msg)
+        self.log.info("[Search] %s", msg)
         self.transport.dht.iterativeFindValue(
             msg['key'], callback=self.on_node_search_value
         )
-        # self.log.info('Result: %s' % result)
 
         # response = self.market.lookup(msg)
         # if response:
@@ -796,7 +772,7 @@ class ProtocolHandler(object):
 
     def client_query_network_for_products(self, socket_handler, msg):
 
-        self.log.info("Querying for Contracts %s" % msg)
+        self.log.info("Querying for Contracts %s", msg)
 
         self.transport.dht.find_listings_by_keyword(
             self.transport,
@@ -823,14 +799,14 @@ class ProtocolHandler(object):
         ~/Library/Application Support/OpenBazaar/backups ??
         """
         def on_backup_done(backupPath):
-            self.log.info('Backup successfully created at ' + backupPath)
+            self.log.info('Backup successfully created at %s', backupPath)
             self.send_to_client(None,
                                 {'type': 'create_backup_result',
                                  'result': 'success',
                                  'detail': backupPath})
 
         def on_backup_error(error):
-            self.log.info('Backup error:' + str(error.strerror))
+            self.log.info('Backup error: %s', error.strerror)
             self.send_to_client(None,
                                 {'type': 'create_backup_result',
                                  'result': 'failure',
@@ -857,7 +833,7 @@ class ProtocolHandler(object):
 
     def on_find_products_by_store(self, results):
 
-        self.log.info('Found Contracts: %s' % type(results))
+        self.log.info('Found Contracts: %s', type(results))
         self.log.info(results)
 
         if len(results) > 0 and type(results['data']) == unicode:
@@ -868,14 +844,14 @@ class ProtocolHandler(object):
         if 'type' not in results:
             return
         else:
-            self.log.debug('Results: %s ' % results['contracts'])
+            self.log.debug('Results: %s', results['contracts'])
 
         if len(results) > 0 and 'data' in results:
 
             data = results['data']
             contracts = data['contracts']
             signature = results['signature']
-            self.log.info('Signature: %s' % signature)
+            self.log.info('Signature: %s', signature)
 
             # Go get listing metadata and then send it to the GUI
             for contract in contracts:
@@ -888,7 +864,7 @@ class ProtocolHandler(object):
 
     def on_find_products(self, results):
 
-        self.log.info('Found Contracts: %s' % type(results))
+        self.log.info('Found Contracts: %s', type(results))
         self.log.info(results)
 
         if len(results):
@@ -896,14 +872,13 @@ class ProtocolHandler(object):
                 # data = results['data']
                 # contracts = data['contracts']
                 # signature = results['signature']
-                # self.log.info('Signature: %s' % signature)
 
                 # TODO: Validate signature of listings matches data
                 # self.transport._myself.
 
                 # Go get listing metadata and then send it to the GUI
                 for contract in results['listings']:
-                    self.log.debug('Results contract %s' % contract)
+                    self.log.debug('Results contract %s', contract)
                     key = contract.get('key', contract)
 
                     self.transport.dht.iterativeFindValue(
@@ -927,7 +902,7 @@ class ProtocolHandler(object):
 
     def on_node_search_value(self, results, key):
 
-        self.log.debug('Listing Data: %s %s' % (results, key))
+        self.log.debug('Listing Data: %s %s', results, key)
 
         # Fix newline issue
         # self.log.info(results_data)
@@ -967,13 +942,9 @@ class ProtocolHandler(object):
 
     def on_global_search_value(self, results, key):
 
-        self.log.info('global search: %s %s' % (results, key))
+        self.log.info('global search: %s %s', results, key)
         if results and type(results) is not list:
-
-            self.log.debug('Listing Data: %s %s' % (results, key))
-
-            # Fix newline issue
-            # self.log.info(results_data)
+            self.log.debug('Listing Data: %s %s', results, key)
 
             # Import gpg pubkey
             gpg = gnupg.GPG()
@@ -1043,7 +1014,7 @@ class ProtocolHandler(object):
 
     # messages coming from "the market"
     def on_peer(self, peer):
-        self.log.info("Add peer: %s" % peer)
+        self.log.info("Add peer: %s", peer)
 
         response = {'type': 'peer',
                     'pubkey': peer.pub
@@ -1087,7 +1058,7 @@ class ProtocolHandler(object):
             "id": random.randint(0, 1000000),
             "result": result
         }
-        self.log.debug('SENDING TO CLIENT %s' % result)
+        self.log.debug('SENDING TO CLIENT %s', result)
         if error:
             response["error"] = error
         self.handler.queue_response(response)
@@ -1098,7 +1069,7 @@ class ProtocolHandler(object):
     # handler a request
     def handle_request(self, socket_handler, request):
         command = request["command"]
-        self.log.info('(I) ws.ProtocolHandler.handle_request of: ' + command)
+        self.log.info('(I) ws.ProtocolHandler.handle_request of: %s', command)
         if command not in self._handlers:
             return False
         params = request["params"]
@@ -1125,7 +1096,7 @@ class ProtocolHandler(object):
                         '\x0F\x02%s' + peer.guid.decode('hex')
                     )
                 peer_item['nick'] = peer.nickname
-                self.log.debug('Peer Nick %s ' % peer)
+                self.log.debug('Peer Nick %s', peer)
                 peers.append(peer_item)
 
         return peers
@@ -1138,6 +1109,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     listen_lock = threading.Lock()
 
     def initialize(self, transport, market_application, db):
+        # pylint: disable=arguments-differ
+        # FIXME: Arguments shouldn't differ.
         self.loop = tornado.ioloop.IOLoop.instance()
         self.log = logging.getLogger(self.__class__.__name__)
         self.log.info("Initialize websockethandler")
@@ -1182,7 +1155,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         # request.has_key("params") and type(request["params"]) == list
 
     def on_message(self, message):
-        self.log.info('[On Message]: %s' % message)
+        self.log.info('[On Message]: %s', message)
         try:
             request = json.loads(message)
         except Exception:
@@ -1197,13 +1170,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     def _send_response(self, response):
         if self.ws_connection:
-
             self.write_message(json.dumps(response))
-            # try:
-            #     self.write_message(json.dumps(response))
-            # except tornado.websocket.WebSocketClosedError:
-            #     logging.warning("Dropping response to closed socket: %s",
-            #        response, exc_info=True)
 
     def queue_response(self, response):
         def send_response(*args):

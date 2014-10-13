@@ -87,10 +87,10 @@ class KBucket(object):
 
         @rtype: guid.GUIDMixin or None
         """
-        self.log.debug('[getContact] %s' % contactID)
+        self.log.debug('[getContact] %s', contactID)
         for contact in self.contacts:
             if contact == contactID:
-                self.log.debug('[getContact] Found %s' % contact)
+                self.log.debug('[getContact] Found %s', contact)
                 return contact
         self.log.debug('[getContact] No Results')
         return None
@@ -138,8 +138,8 @@ class KBucket(object):
             except ValueError:
                 self.log.debug(
                     '[kbucket.getContacts() warning] '
-                    'tried to exclude non-existing contact '
-                    '(%s)' % excludeContact
+                    'tried to exclude non-existing contact (%s)',
+                    excludeContact
                 )
         return contactList
 

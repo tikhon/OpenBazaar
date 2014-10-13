@@ -23,14 +23,14 @@ TESTNET = False
 #     return unspent_infos
 
 def burnaddr_from_guid(guid_hex):
-    _log.debug("burnaddr_from_guid: %s" % guid_hex)
+    _log.debug("burnaddr_from_guid: %s", guid_hex)
 
     if TESTNET:
         guid_hex = '6f' + guid_hex
     else:
         guid_hex = '00' + guid_hex
 
-    _log.debug("GUID address on bitcoin net: %s" % guid_hex)
+    _log.debug("GUID address on bitcoin net: %s", guid_hex)
 
     guid = guid_hex.decode('hex')
 

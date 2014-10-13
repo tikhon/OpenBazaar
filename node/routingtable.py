@@ -283,7 +283,7 @@ class TreeRoutingTable(RoutingTable):
                 canGoHigher = bucketIndex + (i + 1) < len(self.buckets)
             i += 1
 
-        self.log.debug('Closest Nodes: %s' % closestNodes)
+        self.log.debug('Closest Nodes: %s', closestNodes)
         return closestNodes
 
     def getContact(self, node_id):
@@ -327,7 +327,7 @@ class TreeRoutingTable(RoutingTable):
         try:
             self.buckets[bucketIndex].removeContact(node_id)
         except ValueError:
-            self.log.error("Attempted to remove absent contact %s." % node_id)
+            self.log.error("Attempted to remove absent contact %s.", node_id)
 
     def touchKBucket(self, node_id, timestamp=None):
         """
@@ -528,7 +528,7 @@ class OptimizedTreeRoutingTable(TreeRoutingTable):
         try:
             self.buckets[bucket_index].removeContact(node_id)
         except ValueError:
-            self.log.error("Attempted to remove absent contact %s." % node_id)
+            self.log.error("Attempted to remove absent contact %s.", node_id)
         else:
             # Replace this stale contact with one from our replacement
             # cache, if available.
@@ -543,6 +543,4 @@ class OptimizedTreeRoutingTable(TreeRoutingTable):
             else:
                 self.buckets[bucket_index].addContact(cached)
         finally:
-            self.log.debug(
-                'Contacts: %s' % self.buckets[bucket_index].contacts
-            )
+            self.log.debug('Contacts: %s', self.buckets[bucket_index].contacts)

@@ -1,5 +1,7 @@
 # pylint: disable=import-error
+# pylint: disable=no-name-in-module
 from distutils.util import strtobool as _bool
+# pylint: enable=no-name-in-module
 # pylint: enable=import-error
 import os
 
