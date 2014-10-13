@@ -6,12 +6,13 @@ import signal
 from threading import Lock
 import time
 
+import tornado.httpserver
+import tornado.netutil
 import tornado.web
 from zmq.eventloop import ioloop
 
 from db_store import Obdb
 from market import Market
-from network_util import get_random_free_tcp_port
 from transport import CryptoTransportLayer
 import upnp
 from util import open_default_webbrowser, is_mac
@@ -205,23 +206,22 @@ class MarketApplication(tornado.web.Application):
         super(MarketApplication, self).__init__(handlers, **settings)
 
     def start_app(self):
-        error = True
-        p2p_port = self.ob_ctx.server_public_port
-
         if self.ob_ctx.http_port is None:
-            self.ob_ctx.http_port = get_random_free_tcp_port(8889, 8988)
+            self.ob_ctx.http_port = 0  # query the kernel for a port
 
-        while error:
-            try:
-                self.listen(self.ob_ctx.http_port, self.ob_ctx.http_ip)
-                error = False
-            except IOError:
-                self.ob_ctx.http_port += 1
+        sockets = tornado.netutil.bind_sockets(
+            self.ob_ctx.http_port,
+            address=self.ob_ctx.http_ip
+        )
+        server = tornado.httpserver.HTTPServer(self)
+        server.add_sockets(sockets)
+
+        self.ob_ctx.http_port = sockets[0].getsockname()[1]
 
         if not self.ob_ctx.disable_upnp:
-            self.setup_upnp_port_mappings(p2p_port)
+            self.setup_upnp_port_mappings(self.ob_ctx.server_public_port)
         else:
-            print "MarketApplication.listen(): Disabling upnp setup"
+            print "MarketApplication.start_app(): Disabling upnp setup"
 
     def get_transport(self):
         return self.transport
@@ -315,7 +315,6 @@ def log_openbazaar_start(logger, ob_ctx):
     logger.info("Started OpenBazaar Web App at http://%s:%s" % (ob_ctx.http_ip, ob_ctx.http_port))
     print "Started OpenBazaar Web App at http://%s:%s" % \
           (ob_ctx.http_ip, ob_ctx.http_port)
-
 
 def attempt_browser_open(ob_ctx):
     if not ob_ctx.disable_open_browser:
