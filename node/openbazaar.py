@@ -40,8 +40,8 @@ def create_argument_parser():
 
     # Argument entries should have the mandatory long form first.
     plain_args = (
-        ('--bitmessage-pass',),
-        ('--bitmessage-user',),
+        ('--bm-pass',),
+        ('--bm-user',),
         ('--config-file',),
         ('--http-ip', '-k'),
         ('--log-level',),
@@ -53,7 +53,7 @@ def create_argument_parser():
         parser.add_argument(*switches, default=defaults[key])
 
     int_args = (
-        ('--bitmessage-port',),
+        ('--bm-port',),
         ('--dev-nodes', '-n'),
         ('--http-port', '-q'),
         ('--server-port', '-p')
@@ -63,7 +63,7 @@ def create_argument_parser():
         parser.add_argument(*switches, type=int, default=defaults[key])
 
     true_args = (
-        ('--development', '-d'),
+        ('--dev-mode', '-d'),
         ('--disable-open-browser',),
         ('--disable-sqlite-crypt',),
         ('--disable-stun-check',),
@@ -99,7 +99,7 @@ openbazaar [options] <command>
         openbazaar --disable-upnp --seed-mode start
         openbazaar --enable-ip-checker start
         openbazaar -d --dev-nodes 4 -j --disable-stun-check start
-        openbazaar --development -n 4 --disable-upnp start
+        openbazaar --dev-mode -n 4 --disable-upnp start
 
     OPTIONS
     -i, --server-ip <ip address>
@@ -127,7 +127,7 @@ openbazaar [options] <command>
           40 - ERROR
           50 - CRITICAL
 
-    -d, --development
+    -d, --dev-mode
         Enable development mode
 
     -n, --dev-nodes
@@ -139,13 +139,13 @@ openbazaar [options] <command>
     --disable-sqlite-crypt
         Disable encryption on sqlite database
 
-    --bitmessage-user
+    --bm-user
         Bitmessage API username
 
-    --bitmessage-pass
+    --bm-pass
         Bitmessage API password
 
-    --bitmessage-port
+    --bm-port
         Bitmessage API port
 
     -u, --market-id
@@ -202,22 +202,12 @@ def create_openbazaar_contexts(arguments, nat_status):
 
     # market port
     server_port = defaults['SERVER_PORT']
-    if arguments.server_port is not None and\
+    if arguments.server_port != server_port:
         server_port = arguments.server_port
     elif nat_status is not None:
         # override the port for p2p communications with the one
         # obtained from the STUN server.
         server_port = nat_status['external_port']
-
-    # http ip
-    http_ip = defaults['HTTP_IP']
-    if arguments.http_ip is not None:
-        http_ip = arguments.http_ip
-
-    # http port
-    http_port = defaults['HTTP_PORT']
-    if arguments.http_port is not None and arguments.http_port != http_port:
-        http_port = arguments.http_port
 
     # log path (requires LOG_DIR to exist)
     if not os.path.exists(defaults['LOG_DIR']):
@@ -227,55 +217,6 @@ def create_openbazaar_contexts(arguments, nat_status):
     if arguments.log is not None and arguments.log != log_path:
         log_path = arguments.log
 
-    # log level
-    log_level = defaults['LOG_LEVEL']
-    if arguments.log_level is not None and\
-       arguments.log_level != log_level:
-        log_level = arguments.log_level
-
-    # market id
-    market_id = None
-    if arguments.market_id is not None:
-        market_id = arguments.market_id
-
-    # bm user
-    bm_user = defaults['BITMESSAGE_USER']
-    if arguments.bitmessage_user is not None and\
-       arguments.bitmessage_user != bm_user:
-        bm_user = arguments.bitmessage_user
-
-    # bm pass
-    bm_pass = defaults['BITMESSAGE_PASS']
-    if arguments.bitmessage_pass is not None and\
-       arguments.bitmessage_pass != bm_pass:
-        bm_pass = arguments.bitmessage_pass
-
-    # bm port
-    bm_port = defaults['BITMESSAGE_PORT']
-    if arguments.bitmessage_port is not None and\
-       arguments.bitmessage_port != bm_port:
-        bm_port = arguments.bitmessage_port
-
-    # seed_peers
-    seed_peers = defaults['SEEDS']
-    if len(arguments.seeds) > 0:
-        seed_peers = seed_peers + arguments.seeds
-
-    # seed_mode
-    seed_mode = arguments.seed_mode
-
-    # dev_mode
-    dev_mode = defaults['DEVELOPMENT']
-    if arguments.development != dev_mode:
-        dev_mode = arguments.development
-
-    # dev nodes
-    dev_nodes = -1
-    if arguments.development:
-        dev_nodes = defaults['DEV_NODES']
-        if arguments.dev_nodes != dev_nodes:
-            dev_nodes = arguments.dev_nodes
-
     # db path
     if not os.path.exists(defaults['DB_DIR']):
         os.makedirs(defaults['DB_DIR'], 0755)
@@ -284,83 +225,60 @@ def create_openbazaar_contexts(arguments, nat_status):
     if arguments.db_path != db_path:
         db_path = arguments.db_path
 
-    # disable upnp
-    disable_upnp = defaults['DISABLE_UPNP'] or arguments.disable_upnp
-
-    # disable stun check
-    disable_stun_check = defaults['DISABLE_STUN_CHECK']
-    if arguments.disable_stun_check:
-        disable_stun_check = True
-
-    # disable open browser
-    disable_open_browser = defaults['DISABLE_OPEN_BROWSER']
-    if arguments.disable_open_browser:
-        disable_open_browser = True
-
-    # disable sqlite crypt
-    disable_sqlite_crypt = defaults['DISABLE_SQLITE_CRYPT']
-    if arguments.disable_sqlite_crypt != disable_sqlite_crypt:
-        disable_sqlite_crypt = True
-
-    # enable ip checker
-    enable_ip_checker = defaults['ENABLE_IP_CHECKER']
-    if arguments.enable_ip_checker:
-        enable_ip_checker = True
-
     ob_ctxs = []
 
-    if not dev_mode:
+    if not arguments.dev_mode:
         # we return a list of a single element, a production node.
         ob_ctxs.append(OpenBazaarContext(nat_status,
                                          server_ip,
                                          server_port,
-                                         http_ip,
-                                         http_port,
+                                         arguments.http_ip,
+                                         arguments.http_port,
                                          db_path,
                                          log_path,
-                                         log_level,
-                                         market_id,
-                                         bm_user,
-                                         bm_pass,
-                                         bm_port,
-                                         seed_peers,
-                                         seed_mode,
-                                         dev_mode,
-                                         dev_nodes,
-                                         disable_upnp,
-                                         disable_stun_check,
-                                         disable_open_browser,
-                                         disable_sqlite_crypt,
-                                         enable_ip_checker))
-    elif dev_nodes > 0:
+                                         arguments.log_level,
+                                         arguments.market_id,
+                                         arguments.bm_user,
+                                         arguments.bm_pass,
+                                         arguments.bm_port,
+                                         arguments.seeds,
+                                         arguments.seed_mode,
+                                         arguments.dev_mode,
+                                         arguments.dev_nodes,
+                                         arguments.disable_upnp,
+                                         arguments.disable_stun_check,
+                                         arguments.disable_open_browser,
+                                         arguments.disable_sqlite_crypt,
+                                         arguments.enable_ip_checker))
+    elif arguments.dev_nodes > 0:
         # create OpenBazaarContext objects for each development node.
         i = 1
         db_path = os.path.join(defaults['DB_DIR'], 'this_will_be_ignored')
         db_dirname = os.path.dirname(db_path)
-        while i <= dev_nodes:
+        while i <= arguments.dev_nodes:
             db_dev_filename = defaults['DEV_DB_FILE'].format(i)
             db_path = os.path.join(db_dirname, db_dev_filename)
             ob_ctxs.append(OpenBazaarContext(nat_status,
                                              server_ip,
                                              server_port + i - 1,
-                                             http_ip,
-                                             http_port,
+                                             arguments.http_ip,
+                                             arguments.http_port,
                                              db_path,
                                              log_path,
-                                             log_level,
-                                             market_id,
-                                             bm_user,
-                                             bm_pass,
-                                             bm_port,
-                                             seed_peers,
-                                             seed_mode,
-                                             dev_mode,
-                                             dev_nodes,
-                                             disable_upnp,
-                                             disable_stun_check,
-                                             disable_open_browser,
-                                             disable_sqlite_crypt,
-                                             enable_ip_checker))
+                                             arguments.log_level,
+                                             arguments.market_id,
+                                             arguments.bm_user,
+                                             arguments.bm_pass,
+                                             arguments.bm_port,
+                                             arguments.seeds,
+                                             arguments.seed_mode,
+                                             arguments.dev_mode,
+                                             arguments.dev_nodes,
+                                             arguments.disable_upnp,
+                                             arguments.disable_stun_check,
+                                             arguments.disable_open_browser,
+                                             arguments.disable_sqlite_crypt,
+                                             arguments.enable_ip_checker))
             i += 1
 
     return ob_ctxs
@@ -393,7 +311,7 @@ def start(arguments):
     init_aditional_STUN_servers()
 
     # Turn off checks that don't make sense in development mode
-    if arguments.development:
+    if arguments.dev_mode:
         print "DEVELOPMENT MODE! (Disable STUN check and UPnP mappings)"
         arguments.disable_stun_check = True
         arguments.disable_upnp = True

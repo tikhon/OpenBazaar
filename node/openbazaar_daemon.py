@@ -59,7 +59,7 @@ class OpenBazaarContext(object):
                  bm_user,
                  bm_pass,
                  bm_port,
-                 seed_peers,
+                 seeds,
                  seed_mode,
                  dev_mode,
                  dev_nodes,
@@ -80,7 +80,7 @@ class OpenBazaarContext(object):
         self.bm_user = bm_user
         self.bm_pass = bm_pass
         self.bm_port = bm_port
-        self.seed_peers = seed_peers
+        self.seeds = seeds
         self.seed_mode = seed_mode
         self.dev_mode = dev_mode
         self.dev_nodes = dev_nodes
@@ -107,7 +107,7 @@ class OpenBazaarContext(object):
              "bm_user": self.bm_user,
              "bm_pass": self.bm_pass,
              "bm_port": self.bm_port,
-             "seed_peers": self.seed_peers,
+             "seeds": self.seeds,
              "seed_mode": self.seed_mode,
              "dev_mode": self.dev_mode,
              "dev_nodes": self.dev_nodes,
@@ -132,7 +132,7 @@ class OpenBazaarContext(object):
                 'DB_DIR': 'db',
                 'DB_FILE': 'ob.db',
                 'DEV_DB_FILE': 'ob-dev-{0}.db',
-                'DEVELOPMENT': False,
+                'DEV_MODE': False,
                 'DEV_NODES': 3,
                 'SEED_MODE': False,
                 'SEEDS': [
@@ -150,9 +150,9 @@ class OpenBazaarContext(object):
                 'LOG_LEVEL': 30,
                 'HTTP_IP': '127.0.0.1',
                 'HTTP_PORT': None,
-                'BITMESSAGE_USER': None,
-                'BITMESSAGE_PASS': None,
-                'BITMESSAGE_PORT': -1,
+                'BM_USER': None,
+                'BM_PASS': None,
+                'BM_PORT': -1,
                 'ENABLE_IP_CHECKER': False,
                 'CONFIG_FILE': None}
 
@@ -168,12 +168,12 @@ class OpenBazaarContext(object):
                                  log_path=os.path.join(defaults['LOG_DIR'], defaults['LOG_FILE']),
                                  log_level=defaults['LOG_LEVEL'],
                                  market_id=defaults['MARKET_ID'],
-                                 bm_user=defaults['BITMESSAGE_USER'],
-                                 bm_pass=defaults['BITMESSAGE_PASS'],
-                                 bm_port=defaults['BITMESSAGE_PORT'],
-                                 seed_peers=defaults['SEEDS'],
+                                 bm_user=defaults['BM_USER'],
+                                 bm_pass=defaults['BM_PASS'],
+                                 bm_port=defaults['BM_PORT'],
+                                 seeds=defaults['SEEDS'],
                                  seed_mode=defaults['SEED_MODE'],
-                                 dev_mode=defaults['DEVELOPMENT'],
+                                 dev_mode=defaults['DEV_MODE'],
                                  dev_nodes=defaults['DEV_NODES'],
                                  disable_upnp=defaults['DISABLE_UPNP'],
                                  disable_stun_check=defaults['DISABLE_STUN_CHECK'],
@@ -191,7 +191,7 @@ class MarketApplication(tornado.web.Application):
         self.market = Market(self.transport, db)
         self.upnp_mapper = None
 
-        peers = ob_ctx.seed_peers if not ob_ctx.seed_mode else []
+        peers = ob_ctx.seeds if not ob_ctx.seed_mode else []
         self.transport.join_network(peers)
 
         handlers = [
