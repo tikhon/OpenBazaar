@@ -384,7 +384,7 @@ class Orders(object):
 
         order['state'] = Orders.State.SHIPPED
         order['payment_address'] = payment_address
-        self.db.updateEntries("orders", {"order_id": order_id}, order)
+        self.db.updateEntries("orders", order, {"order_id": order_id})
 
         order['type'] = 'order'
         order['payment_address'] = payment_address
@@ -423,7 +423,7 @@ class Orders(object):
         new_order['address'] = self._multisig.address
 
         if len(self.db.selectEntries("orders", {"order_id": new_order['id']})) > 0:
-            self.db.updateEntries("orders", {"order_id": new_order['id']}, {new_order})
+            self.db.updateEntries("orders", {new_order}, {"order_id": new_order['id']})
         else:
             self.db.insertEntry("orders", new_order)
 
@@ -442,7 +442,7 @@ class Orders(object):
         del new_order['merchant_bitmessage']
         del new_order['payment_address_amount']
 
-        self.db.updateEntries("orders", {"order_id": order_id}, new_order)
+        self.db.updateEntries("orders", new_order, {"order_id": order_id})
 
         new_order['type'] = 'order'
 
@@ -592,9 +592,6 @@ class Orders(object):
         self.db.updateEntries(
             "orders",
             {
-                'order_id': order_id
-            },
-            {
                 'market_id': self.transport.market_id,
                 'contract_key': contract_key,
                 'signed_contract_body': str(signed_data),
@@ -602,6 +599,9 @@ class Orders(object):
                 'state': Orders.State.NEW,
                 'updated': time.time(),
                 'note_for_merchant': msg['message']
+            },
+            {
+                'order_id': order_id
             }
         )
 
@@ -790,10 +790,12 @@ class Orders(object):
             bid_data_json['Buyer']['buyer_order_id']
         )
 
-        self.db.updateEntries("orders", {'buyer_order_id': buyer_order_id}, {'state': Orders.State.BUYER_PAID,
-                                                                             'shipping_address': json.dumps(
-                                                                                 msg['shipping_address']),
-                                                                             "updated": time.time()})
+        self.db.updateEntries(
+            "orders",
+            {'state': Orders.State.BUYER_PAID, 'shipping_address': json.dumps(msg['shipping_address']),
+                                                                             "updated": time.time()},
+            {'buyer_order_id': buyer_order_id}
+        )
         if self.transport.handler is not None:
             self.transport.handler.send_to_client(None, {"type": "order_notify",
                                                          "msg": "A buyer just paid for an order."})
@@ -815,12 +817,12 @@ class Orders(object):
         self.db.updateEntries(
             "orders",
             {
-                'order_id': bid_data_json['Buyer']['buyer_order_id']
-            },
-            {
                 'state': Orders.State.SHIPPED,
                 'updated': time.time(),
                 'payment_address': msg['payment_address']
+            },
+            {
+                'order_id': bid_data_json['Buyer']['buyer_order_id']
             }
         )
 

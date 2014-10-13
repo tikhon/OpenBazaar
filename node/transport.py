@@ -384,7 +384,7 @@ class CryptoTransportLayer(TransportLayer):
 
                 pubkey_text = gpg.export_keys(key.fingerprint)
                 newsettings = {"PGPPubKey": pubkey_text, "PGPPubkeyFingerprint": key.fingerprint}
-                self.db.updateEntries("settings", {"market_id": self.market_id}, newsettings)
+                self.db.updateEntries("settings", newsettings, {"market_id": self.market_id})
                 self.settings.update(newsettings)
 
                 self.log.info('PGP keypair generated.')
@@ -398,7 +398,7 @@ class CryptoTransportLayer(TransportLayer):
 
         if not ('nickname' in self.settings and self.settings['nickname']):
             newsettings = {'nickname': 'Default'}
-            self.db.updateEntries('settings', {"market_id": self.market_id}, newsettings)
+            self.db.updateEntries('settings', newsettings, {"market_id": self.market_id})
             self.settings.update(newsettings)
 
         self.nickname = self.settings['nickname'] if 'nickname' in self.settings else ""
@@ -452,7 +452,7 @@ class CryptoTransportLayer(TransportLayer):
             "guid": self.guid,
             "sin": self.sin
         }
-        self.db.updateEntries("settings", {"market_id": self.market_id}, newsettings)
+        self.db.updateEntries("settings", newsettings, {"market_id": self.market_id})
         self.settings.update(newsettings)
 
     def _generate_new_bitmessage_address(self):
@@ -464,7 +464,7 @@ class CryptoTransportLayer(TransportLayer):
             1.1111
         )
         newsettings = {"bitmessage": self.bitmessage}
-        self.db.updateEntries("settings", {"market_id": self.market_id}, newsettings)
+        self.db.updateEntries("settings", newsettings, {"market_id": self.market_id})
         self.settings.update(newsettings)
 
     def join_network(self, seed_peers=None, callback=lambda msg: None):
