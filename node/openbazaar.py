@@ -17,8 +17,20 @@ from openbazaar_daemon import node_starter, OpenBazaarContext
 import setup_db
 
 
+def arg_to_key(arg):
+    """
+    Convert a long-form command line switch to an uppercase equivalent
+    dict key, replacing '-' with '_'.
+
+    Example: arg_to_key('--super_flag') == 'SUPER_FLAG'
+    """
+    return arg.lstrip('-').upper().replace('-', '_')
+
+
 def create_argument_parser():
     defaults = OpenBazaarContext.get_defaults()
+    default_db_path = os.path.join(defaults['DB_DIR'], defaults['DB_FILE'])
+    default_log_path = os.path.join(defaults['LOG_DIR'], defaults['LOG_FILE'])
 
     parser = argparse.ArgumentParser(
         description='OpenBazaar launcher script',
@@ -26,81 +38,47 @@ def create_argument_parser():
         add_help=False
     )
 
-    parser.add_argument('-i', '--server-ip',
-                        default=defaults['SERVER_IP'])
+    # Argument entries should have the mandatory long form first.
+    plain_args = (
+        ('--bitmessage-pass',),
+        ('--bitmessage-user',),
+        ('--config-file',),
+        ('--http-ip', '-k'),
+        ('--log-level',),
+        ('--market-id', '-u'),
+        ('--server-ip', '-i')
+    )
+    for switches in plain_args:
+        key = arg_to_key(switches[0])
+        parser.add_argument(*switches, default=defaults[key])
 
-    parser.add_argument('-p', '--server-port',
-                        default=defaults['SERVER_PORT'],
-                        type=int)
+    int_args = (
+        ('--bitmessage-port',),
+        ('--dev-nodes', '-n'),
+        ('--http-port', '-q'),
+        ('--server-port', '-p')
+    )
+    for switches in int_args:
+        key = arg_to_key(switches[0])
+        parser.add_argument(*switches, type=int, default=defaults[key])
 
-    parser.add_argument('-k', '--http-ip',
-                        default=defaults['HTTP_IP'])
+    true_args = (
+        ('--development', '-d'),
+        ('--disable-open-browser',),
+        ('--disable-sqlite-crypt',),
+        ('--disable-stun-check',),
+        ('--disable-upnp', '-j'),
+        ('--enable-ip-checker',),
+        ('--seed-mode', '-S')
+    )
+    for switches in true_args:
+        key = arg_to_key(switches[0])
+        parser.add_argument(*switches, action='store_true', default=defaults[key])
 
-    parser.add_argument('-q', '--http-port',
-                        type=int, default=defaults['HTTP_PORT'])
-
-    default_log_path = os.path.join(defaults['LOG_DIR'], defaults['LOG_FILE'])
-    parser.add_argument('-l', '--log',
-                        default=default_log_path)
-
-    parser.add_argument('--log-level',
-                        default=defaults['LOG_LEVEL'])
-
-    parser.add_argument('-d', '--development',
-                        action='store_true',
-                        default=defaults['DEVELOPMENT'])
-
-    default_db_path = os.path.join(defaults['DB_DIR'], defaults['DB_FILE'])
-    parser.add_argument("--db-path",
-                        default=default_db_path)
-
-    parser.add_argument('-n', '--dev-nodes',
-                        type=int,
-                        default=defaults['DEV_NODES'])
-
-    parser.add_argument('--bitmessage-user',
-                        default=defaults['BITMESSAGE_USER'])
-
-    parser.add_argument('--bitmessage-pass',
-                        default=defaults['BITMESSAGE_PASS'])
-
-    parser.add_argument('--bitmessage-port',
-                        type=int,
-                        default=defaults['BITMESSAGE_PORT'])
-
-    parser.add_argument('-u', '--market-id',
-                        default=defaults['MARKET_ID'])
-
-    parser.add_argument('-j', '--disable-upnp',
-                        action='store_true',
-                        default=defaults['DISABLE_UPNP'])
-
-    parser.add_argument('--disable-stun-check',
-                        action='store_true',
-                        default=defaults['DISABLE_STUN_CHECK'])
-
-    parser.add_argument('-S', '--seed-mode',
-                        action='store_true',
-                        default=defaults['SEED_MODE'])
-
-    parser.add_argument('-s', '--seeds',
-                        nargs='*',
-                        default=defaults['SEEDS'])
-
-    parser.add_argument('--disable-open-browser',
-                        action='store_true',
-                        default=defaults['DISABLE_OPEN_BROWSER'])
-
-    parser.add_argument('--disable-sqlite-crypt',
-                        action='store_true',
-                        default=defaults['DISABLE_SQLITE_CRYPT'])
-
-    parser.add_argument('--config-file',
-                        default=defaults['CONFIG_FILE'])
-
-    parser.add_argument('--enable-ip-checker',
-                        action='store_true',
-                        default=defaults['ENABLE_IP_CHECKER'])
+    # Add miscellaneous flags.
+    parser.add_argument('-s', '--seeds', nargs='*', default=defaults['SEEDS'])
+    parser.add_argument('--db-path', default=default_db_path)
+    parser.add_argument('-l', '--log', default=default_log_path)
 
     # Add valid commands.
     parser.add_argument('command', choices=('start', 'stop'))
