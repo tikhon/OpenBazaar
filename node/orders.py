@@ -160,7 +160,9 @@ class Orders(object):
 
     @staticmethod
     def get_qr_code(item_title, address, total):
-        qr_url = urllib.urlencode({"url": item_title.decode('utf-8', 'ignore')})
+        if isinstance(item_title, unicode):
+            item_title = item_title.encode('utf-8', 'ignore')
+        qr_url = urllib.urlencode({"url": item_title})
         qr = qrcode.make("bitcoin:" + address + "?amount=" + str(total) + "&message=" + qr_url)
         output = StringIO.StringIO()
         qr.save(output, "PNG")
