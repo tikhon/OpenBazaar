@@ -56,7 +56,7 @@ class DataStore(UserDict.DictMixin, object):
 class SqliteDataStore(DataStore):
     """Sqlite database-based datastore."""
     def __init__(self, db_connection):
-        super(SqliteDataStore, self).__init__(self)
+        super(SqliteDataStore, self).__init__()
         self.db = db_connection
         self.log = logging.getLogger(self.__class__.__name__)
 
