@@ -50,14 +50,6 @@ class PeerConnection(object):
             self.socket.ipv6 = True
             self.socket.connect(self.address)
 
-    def create_zmq_socket(self):
-        try:
-            return self.socket
-        except Exception as e:
-            self.log.error('Cannot create socket %s', e)
-            raise
-        # self._socket.setsockopt(zmq.SOCKS_PROXY, "127.0.0.1:9051");
-
     def cleanup_context(self):
         self.ctx.destroy()
 
