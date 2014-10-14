@@ -480,7 +480,7 @@ class CryptoTransportLayer(TransportLayer):
         # Connect to persisted peers
         db_peers = self.get_past_peers()
 
-        known_peers = list(set(seed_peers)) + list(set(db_peers))
+        known_peers = list(set(seed_peers).union(db_peers))
 
         for known_peer in known_peers:
             self.dht.add_peer(self, known_peer)
