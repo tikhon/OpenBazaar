@@ -3,7 +3,6 @@ import json
 import logging
 import platform
 from pprint import pformat
-import socket
 from urlparse import urlparse
 import zlib
 
@@ -122,54 +121,51 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
 
     def start_handshake(self, handshake_cb=None):
 
-        if self.check_port():
-            def cb(msg, handshake_cb=None):
-                if msg:
+        def cb(msg, handshake_cb=None):
+            if msg:
 
-                    self.log.debug('ALIVE PEER %s', msg[0])
-                    msg = msg[0]
-                    msg = json.loads(msg)
+                self.log.debug('ALIVE PEER %s', msg[0])
+                msg = msg[0]
+                msg = json.loads(msg)
 
-                    # Update Information
-                    self.guid = msg['senderGUID']
-                    self.sin = self.generate_sin(self.guid)
-                    self.pub = msg['pubkey']
-                    self.nickname = msg['senderNick']
+                # Update Information
+                self.guid = msg['senderGUID']
+                self.sin = self.generate_sin(self.guid)
+                self.pub = msg['pubkey']
+                self.nickname = msg['senderNick']
 
-                    self._peer_alive = True
+                self._peer_alive = True
 
-                    # Add this peer to active peers list
-                    for idx, peer in enumerate(self.transport.dht.activePeers):
-                        if peer.guid == self.guid or\
-                           peer.address == self.address:
-                            self.transport.dht.activePeers[idx] = self
-                            self.transport.dht.add_peer(
-                                self.transport,
-                                self.address,
-                                self.pub,
-                                self.guid,
-                                self.nickname
-                            )
-                            return
+                # Add this peer to active peers list
+                for idx, peer in enumerate(self.transport.dht.activePeers):
+                    if peer.guid == self.guid or\
+                       peer.address == self.address:
+                        self.transport.dht.activePeers[idx] = self
+                        self.transport.dht.add_peer(
+                            self.transport,
+                            self.address,
+                            self.pub,
+                            self.guid,
+                            self.nickname
+                        )
+                        return
 
-                    self.transport.dht.activePeers.append(self)
-                    self.transport.dht.routingTable.addContact(self)
+                self.transport.dht.activePeers.append(self)
+                self.transport.dht.routingTable.addContact(self)
 
-                    if handshake_cb is not None:
-                        handshake_cb()
+                if handshake_cb is not None:
+                    handshake_cb()
 
-            self.send_raw(
-                json.dumps({
-                    'type': 'hello',
-                    'pubkey': self.transport.pubkey,
-                    'uri': self.transport.uri,
-                    'senderGUID': self.transport.guid,
-                    'senderNick': self.transport.nickname
-                }),
-                cb
-            )
-        else:
-            self.log.error('CryptoPeerConnection.check_port() failed.')
+        self.send_raw(
+            json.dumps({
+                'type': 'hello',
+                'pubkey': self.transport.pubkey,
+                'uri': self.transport.uri,
+                'senderGUID': self.transport.guid,
+                'senderNick': self.transport.nickname
+            }),
+            cb
+        )
 
     def __repr__(self):
         return '{ guid: %s, ip: %s, port: %s, pubkey: %s }' % (
@@ -179,29 +175,6 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
     @staticmethod
     def generate_sin(guid):
         return obelisk.EncodeBase58Check('\x0F\x02%s' + guid.decode('hex'))
-
-    def check_port(self):
-
-        # TODO: Not sure I like this at all and possibly target for removal
-        # try:
-        #     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        #     s.settimeout(10)
-        #     s.connect((self.ip, self.port))
-        # except socket.error:
-        #     try:
-        #         s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-        #         s.settimeout(10)
-        #         s.connect((self.ip, self.port))
-        #     except socket.error as e:
-        #         self.log.error("socket error on %s: %s" % (self.ip, e))
-        #         return False
-        # except TypeError:
-        #     self.log.error("tried connecting to invalid address: %s" % self.ip)
-        #     return False
-        #
-        # if s:
-        #     s.close()
-        return True
 
     def sign(self, data):
         cryptor = makePrivCryptor(self.transport.settings['secret'])
@@ -219,45 +192,40 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
     def send(self, data, callback=lambda msg: None):
 
         if hasattr(self, 'guid'):
+            # Include sender information and version
+            data['guid'] = self.guid
+            data['senderGUID'] = self.transport.guid
+            data['uri'] = self.transport.uri
+            data['pubkey'] = self.transport.pubkey
+            data['senderNick'] = self.transport.nickname
+            data['v'] = constants.VERSION
 
-            if self.check_port():
+            self.log.debug(
+                'Sending to peer: %s %s',
+                self.ip, pformat(data)
+            )
 
-                # Include sender information and version
-                data['guid'] = self.guid
-                data['senderGUID'] = self.transport.guid
-                data['uri'] = self.transport.uri
-                data['pubkey'] = self.transport.pubkey
-                data['senderNick'] = self.transport.nickname
-                data['v'] = constants.VERSION
-
-                self.log.debug(
-                    'Sending to peer: %s %s',
-                    self.ip, pformat(data)
-                )
-
-                if self.pub == '':
-                    self.log.info('There is no public key for encryption')
-                else:
-                    signature = self.sign(json.dumps(data))
-
-                    try:
-                        data = self.encrypt(json.dumps(data))
-                    except Exception as e:
-                        self.log.error('Encryption failed. %s', e)
-                        return
-
-                    try:
-                        self.send_raw(
-                            json.dumps({
-                                'sig': signature.encode('hex'),
-                                'data': data.encode('hex')
-                            }),
-                            callback
-                        )
-                    except Exception as e:
-                        self.log.error("Was not able to encode empty data: %s", e)
+            if self.pub == '':
+                self.log.info('There is no public key for encryption')
             else:
-                self.log.error('Peer is not available for sending data')
+                signature = self.sign(json.dumps(data))
+
+                try:
+                    data = self.encrypt(json.dumps(data))
+                except Exception as e:
+                    self.log.error('Encryption failed. %s', e)
+                    return
+
+                try:
+                    self.send_raw(
+                        json.dumps({
+                            'sig': signature.encode('hex'),
+                            'data': data.encode('hex')
+                        }),
+                        callback
+                    )
+                except Exception as e:
+                    self.log.error("Was not able to encode empty data: %s", e)
         else:
             self.log.error('Cannot send to peer')
 
