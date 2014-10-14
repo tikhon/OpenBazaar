@@ -302,7 +302,7 @@ def ensure_database_setup(ob_ctx, defaults):
     if not os.path.exists(db_path):
         # setup the database if file not there.
         print "[openbazaar] bootstrapping database ", os.path.basename(db_path)
-        setup_db.setup_db(db_path)
+        setup_db.setup_db(db_path, ob_ctx.disable_sqlite_crypt)
         print "[openbazaar] database setup completed"
 
 
