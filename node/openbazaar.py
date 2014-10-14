@@ -19,18 +19,18 @@ import setup_db
 
 def arg_to_key(arg):
     """
-    Convert a long-form command line switch to an uppercase equivalent
-    dict key, replacing '-' with '_'.
+    Convert a long-form command line switch to an equivalent dict key,
+    replacing '-' with '_'.
 
-    Example: arg_to_key('--super_flag') == 'SUPER_FLAG'
+    Example: arg_to_key('--super-flag') == 'super_flag'
     """
-    return arg.lstrip('-').upper().replace('-', '_')
+    return arg.lstrip('-').replace('-', '_')
 
 
 def create_argument_parser():
     defaults = OpenBazaarContext.get_defaults()
-    default_db_path = os.path.join(defaults['DB_DIR'], defaults['DB_FILE'])
-    default_log_path = os.path.join(defaults['LOG_DIR'], defaults['LOG_FILE'])
+    default_db_path = os.path.join(defaults['db_dir'], defaults['db_file'])
+    default_log_path = os.path.join(defaults['log_dir'], defaults['log_file'])
 
     parser = argparse.ArgumentParser(
         description='OpenBazaar launcher script',
@@ -76,7 +76,7 @@ def create_argument_parser():
         parser.add_argument(*switches, action='store_true', default=defaults[key])
 
     # Add miscellaneous flags.
-    parser.add_argument('-s', '--seeds', nargs='*', default=defaults['SEEDS'])
+    parser.add_argument('-s', '--seeds', nargs='*', default=defaults['seeds'])
     parser.add_argument('--db-path', default=default_db_path)
     parser.add_argument('-l', '--log', default=default_log_path)
 
@@ -187,7 +187,7 @@ def create_openbazaar_contexts(arguments, nat_status):
     """
     defaults = OpenBazaarContext.get_defaults()
 
-    server_ip = defaults['SERVER_IP']
+    server_ip = defaults['server_ip']
     if server_ip != arguments.server_ip:
         server_ip = arguments.server_ip
     elif nat_status is not None:
@@ -201,7 +201,7 @@ def create_openbazaar_contexts(arguments, nat_status):
     # annoy you." -Gubatron :)
 
     # market port
-    server_port = defaults['SERVER_PORT']
+    server_port = defaults['server_port']
     if arguments.server_port != server_port:
         server_port = arguments.server_port
     elif nat_status is not None:
@@ -209,19 +209,19 @@ def create_openbazaar_contexts(arguments, nat_status):
         # obtained from the STUN server.
         server_port = nat_status['external_port']
 
-    # log path (requires LOG_DIR to exist)
-    if not os.path.exists(defaults['LOG_DIR']):
-        os.makedirs(defaults['LOG_DIR'], 0755)
+    # log path (requires log_dir to exist)
+    if not os.path.exists(defaults['log_dir']):
+        os.makedirs(defaults['log_dir'], 0755)
 
-    log_path = os.path.join(defaults['LOG_DIR'], defaults['LOG_FILE'])
+    log_path = os.path.join(defaults['log_dir'], defaults['log_file'])
     if arguments.log is not None and arguments.log != log_path:
         log_path = arguments.log
 
     # db path
-    if not os.path.exists(defaults['DB_DIR']):
-        os.makedirs(defaults['DB_DIR'], 0755)
+    if not os.path.exists(defaults['db_dir']):
+        os.makedirs(defaults['db_dir'], 0755)
 
-    db_path = os.path.join(defaults['DB_DIR'], defaults['DB_FILE'])
+    db_path = os.path.join(defaults['db_dir'], defaults['db_file'])
     if arguments.db_path != db_path:
         db_path = arguments.db_path
 
@@ -253,10 +253,10 @@ def create_openbazaar_contexts(arguments, nat_status):
     elif arguments.dev_nodes > 0:
         # create OpenBazaarContext objects for each development node.
         i = 1
-        db_path = os.path.join(defaults['DB_DIR'], 'this_will_be_ignored')
+        db_path = os.path.join(defaults['db_dir'], 'this_will_be_ignored')
         db_dirname = os.path.dirname(db_path)
         while i <= arguments.dev_nodes:
-            db_dev_filename = defaults['DEV_DB_FILE'].format(i)
+            db_dev_filename = defaults['dev_db_file'].format(i)
             db_path = os.path.join(db_dirname, db_dev_filename)
             ob_ctxs.append(OpenBazaarContext(nat_status,
                                              server_ip,
@@ -286,9 +286,9 @@ def create_openbazaar_contexts(arguments, nat_status):
 
 def ensure_database_setup(ob_ctx, defaults):
     db_path = ob_ctx.db_path
-    default_db_path = os.path.join(defaults['DB_DIR'], defaults['DB_FILE'])
-    default_dev_db_path = os.path.join(defaults['DB_DIR'],
-                                       defaults['DEV_DB_FILE'])
+    default_db_path = os.path.join(defaults['db_dir'], defaults['db_file'])
+    default_dev_db_path = os.path.join(defaults['db_dir'],
+                                       defaults['dev_db_file'])
 
     if ob_ctx.dev_mode and db_path == default_db_path:
         # override default db_path to developer database path.
