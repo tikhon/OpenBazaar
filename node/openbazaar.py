@@ -217,8 +217,7 @@ def create_openbazaar_contexts(arguments, nat_status):
 
     # market port
     server_public_port = defaults['SERVER_PORT']
-    if arguments.server_public_port is not None and\
-       arguments.server_public_port != server_public_port:
+    if arguments.server_public_port is not None:
         server_public_port = arguments.server_public_port
     elif nat_status is not None:
         # override the port for p2p communications with the one
