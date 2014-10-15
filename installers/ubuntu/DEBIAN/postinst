@@ -3,7 +3,8 @@ set -e
 echo "[openbazaar] Installing OpenBazaar python dependencies..."
 
 pushd /usr/share/openbazaar
-sudo pip install -r requirements.txt
+sudo virtualenv env
+sudo ./env/bin/pip install -r requirements.txt
 popd
 
 sudo chmod -R 775 /usr/share/openbazaar
@@ -19,8 +20,7 @@ echo
 echo
 echo
 echo "[openbazaar] Installation finished."
-echo "[openbazaar] Now type 'openbazaar start' to start OpenBazaar"
-echo "[openbazaar] then open it in your favorite web browser"
+echo "[openbazaar] Now type 'openbazaar start' to start OpenBazaar."
 echo
 echo
 echo
