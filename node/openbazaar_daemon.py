@@ -147,9 +147,9 @@ class OpenBazaarContext(object):
                 'disable_open_browser': False,
                 'disable_sqlite_crypt': False,
                 'log_level': 30,
-                    # CRITICAL=50, ERROR=40, WARNING=30, DEBUG=10, NOTSET=0
+                # CRITICAL=50, ERROR=40, WARNING=30, DEBUG=10, NOTSET=0
                 'http_ip': '127.0.0.1',
-                'http_port': None,
+                'http_port': 0,
                 'bm_user': None,
                 'bm_pass': None,
                 'bm_port': -1,
@@ -207,9 +207,7 @@ class MarketApplication(tornado.web.Application):
         super(MarketApplication, self).__init__(handlers, **settings)
 
     def start_app(self):
-        if self.ob_ctx.http_port is None:
-            self.ob_ctx.http_port = 0  # query the kernel for a port
-
+        # If self.ob_ctx.http_port is 0, the kernel is queried for a port.
         sockets = tornado.netutil.bind_sockets(
             self.ob_ctx.http_port,
             address=self.ob_ctx.http_ip
@@ -312,10 +310,12 @@ def create_logger(ob_ctx):
         print "Could not setup logger, continuing: ", e.message
     return logger
 
+
 def log_openbazaar_start(logger, ob_ctx):
     logger.info("Started OpenBazaar Web App at http://%s:%s" % (ob_ctx.http_ip, ob_ctx.http_port))
     print "Started OpenBazaar Web App at http://%s:%s" % \
           (ob_ctx.http_ip, ob_ctx.http_port)
+
 
 def attempt_browser_open(ob_ctx):
     if not ob_ctx.disable_open_browser:

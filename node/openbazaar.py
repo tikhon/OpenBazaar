@@ -12,7 +12,7 @@ import threading
 
 import psutil
 
-from network_util import init_aditional_STUN_servers, check_NAT_status
+import network_util
 from openbazaar_daemon import node_starter, OpenBazaarContext
 import setup_db
 
@@ -62,7 +62,7 @@ def create_argument_parser():
         key = arg_to_key(switches[0])
         parser.add_argument(*switches, type=int, default=defaults[key])
 
-    true_args = (
+    flags = (
         ('--dev-mode', '-d'),
         ('--disable-open-browser',),
         ('--disable-sqlite-crypt',),
@@ -71,7 +71,7 @@ def create_argument_parser():
         ('--enable-ip-checker',),
         ('--seed-mode', '-S')
     )
-    for switches in true_args:
+    for switches in flags:
         key = arg_to_key(switches[0])
         parser.add_argument(*switches, action='store_true', default=defaults[key])
 
@@ -214,7 +214,7 @@ def create_openbazaar_contexts(arguments, nat_status):
         os.makedirs(defaults['log_dir'], 0755)
 
     log_path = os.path.join(defaults['log_dir'], defaults['log_file'])
-    if arguments.log is not None and arguments.log != log_path:
+    if arguments.log != log_path:
         log_path = arguments.log
 
     # db path
@@ -250,17 +250,16 @@ def create_openbazaar_contexts(arguments, nat_status):
                                          arguments.disable_open_browser,
                                          arguments.disable_sqlite_crypt,
                                          arguments.enable_ip_checker))
-    elif arguments.dev_nodes > 0:
-        # create OpenBazaarContext objects for each development node.
-        i = 1
+    else:
+        # Create an OpenBazaarContext object for each development node.
         db_path = os.path.join(defaults['db_dir'], 'this_will_be_ignored')
         db_dirname = os.path.dirname(db_path)
-        while i <= arguments.dev_nodes:
+        for i in range(arguments.dev_nodes):
             db_dev_filename = defaults['dev_db_file'].format(i)
             db_path = os.path.join(db_dirname, db_dev_filename)
             ob_ctxs.append(OpenBazaarContext(nat_status,
                                              server_ip,
-                                             server_port + i - 1,
+                                             server_port + i,
                                              arguments.http_ip,
                                              arguments.http_port,
                                              db_path,
@@ -279,8 +278,6 @@ def create_openbazaar_contexts(arguments, nat_status):
                                              arguments.disable_open_browser,
                                              arguments.disable_sqlite_crypt,
                                              arguments.enable_ip_checker))
-            i += 1
-
     return ob_ctxs
 
 
@@ -308,7 +305,7 @@ def ensure_database_setup(ob_ctx, defaults):
 
 def start(arguments):
     defaults = OpenBazaarContext.get_defaults()
-    init_aditional_STUN_servers()
+    network_util.init_additional_STUN_servers()
 
     # Turn off checks that don't make sense in development mode
     if arguments.dev_mode:
@@ -320,9 +317,11 @@ def start(arguments):
     nat_status = None
     if not arguments.disable_stun_check:
         print "Checking NAT Status..."
-        nat_status = check_NAT_status()
+        nat_status = network_util.check_NAT_status()
     else:
-        assert arguments.server_ip, "Need public IP if not using STUN."
+        assert not network_util.is_private_ip_address(
+            arguments.server_ip
+        ), "Need public IP if not using STUN."
 
     ob_ctxs = create_openbazaar_contexts(arguments, nat_status)
 
@@ -410,9 +409,6 @@ def main():
         start(arguments)
     elif arguments.command == 'stop':
         stop()
-    else:
-        print "[openbazaar] Invalid command '%s'" % arguments.command
-        print "[openbazaar] Valid commands are 'start', 'stop'."
 
 
 if __name__ == '__main__':
