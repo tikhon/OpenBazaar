@@ -379,8 +379,7 @@ class Market(object):
             for n in settings['notaries']:
                 peer = self.dht.routingTable.getContact(n.guid)
                 if peer is not None:
-                    t = Thread(target=peer.start_handshake)
-                    t.start()
+                    peer.start_handshake()
                     notaries.append(n)
             return notaries
         # End of untested code
@@ -724,8 +723,7 @@ class Market(object):
 
         def send_page_query():
             """Send a request for the local identity page"""
-            t = Thread(target=new_peer.start_handshake)
-            t.start()
+            new_peer.start_handshake()
 
             new_peer.send(proto_page(
                 self.transport.uri,
@@ -742,8 +740,7 @@ class Market(object):
                 settings.get('arbiterDescription', ''),
                 self.transport.sin))
 
-        t = Thread(target=send_page_query)
-        t.start()
+        send_page_query()
 
     def validate_on_query_myorders(self, *data):
         self.log.debug('Validating on query myorders message.')
