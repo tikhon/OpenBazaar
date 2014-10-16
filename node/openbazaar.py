@@ -13,7 +13,7 @@ import threading
 import psutil
 
 import network_util
-from openbazaar_daemon import node_starter, OpenBazaarContext
+from openbazaar_daemon import node_starter, OpenBazaarContext, start_node
 import setup_db
 
 
@@ -363,7 +363,12 @@ def start(arguments):
     for ob_ctx in ob_ctxs:
         ensure_database_setup(ob_ctx, defaults)
 
-    multiprocessing.Process(target=node_starter, args=(ob_ctxs,)).start()
+    if hasattr(sys, 'frozen'):
+        start_node(ob_ctxs[0])
+    else:
+        p = multiprocessing.Process(target=node_starter,
+                                    args=(ob_ctxs,))
+        p.start()
 
 
 def terminate_or_kill_process(process):
