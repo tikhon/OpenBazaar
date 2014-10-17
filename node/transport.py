@@ -31,8 +31,8 @@ class TransportLayer(object):
         self.peers = {}
         self.callbacks = defaultdict(list)
         self.timeouts = []
-        self.port = ob_ctx.server_public_port
-        self.ip = ob_ctx.server_public_ip
+        self.port = ob_ctx.server_port
+        self.ip = ob_ctx.server_ip
         self.guid = guid
         self.market_id = ob_ctx.market_id
         self.nickname = nickname
@@ -197,8 +197,8 @@ class CryptoTransportLayer(TransportLayer):
 
         self.market_id = ob_ctx.market_id
         self.nick_mapping = {}
-        self.uri = network_util.get_peer_url(ob_ctx.server_public_ip, ob_ctx.server_public_port)
-        self.ip = ob_ctx.server_public_ip
+        self.uri = network_util.get_peer_url(ob_ctx.server_ip, ob_ctx.server_port)
+        self.ip = ob_ctx.server_ip
         self.nickname = ""
         self.dev_mode = ob_ctx.dev_mode
 
@@ -267,7 +267,7 @@ class CryptoTransportLayer(TransportLayer):
             if not new_ip or new_ip == self.ip:
                 return
 
-            self.ob_ctx.server_public_ip = new_ip
+            self.ob_ctx.server_ip = new_ip
             self.ip = new_ip
 
             if self.listener is not None:
@@ -466,26 +466,26 @@ class CryptoTransportLayer(TransportLayer):
         self.db.updateEntries("settings", newsettings, {"market_id": self.market_id})
         self.settings.update(newsettings)
 
-    def join_network(self, seed_peers=None, callback=lambda msg: None):
-        if seed_peers is None:
-            seed_peers = []
+    def join_network(self, seeds=None, callback=lambda msg: None):
+        if seeds is None:
+            seeds = []
 
         self.log.info('Joining network')
 
         # Connect up through seed servers
-        for idx, seed in enumerate(seed_peers):
-            seed_peers[idx] = network_util.get_peer_url(seed, "12345")
+        for idx, seed in enumerate(seeds):
+            seeds[idx] = network_util.get_peer_url(seed, "12345")
 
         # Connect to persisted peers
         db_peers = self.get_past_peers()
 
-        known_peers = list(set(seed_peers).union(db_peers))
+        known_peers = list(set(seeds).union(db_peers))
 
         for known_peer in known_peers:
             self.dht.add_peer(self, known_peer)
 
         # Populate routing table by searching for self
-        if len(known_peers) > 0:
+        if known_peers:
             # Check every one second if we are connected
             # We could use a PeriodicCallback but I think this is simpler
             # since this will be repeated in most cases less than 10 times

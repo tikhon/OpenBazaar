@@ -7,7 +7,7 @@ from IPy import IPint
 import stun
 
 
-def init_aditional_STUN_servers():
+def init_additional_STUN_servers():
     """try calling this method only once"""
     # list of additional stun servers taken (and tested) from natvpn project
     # https://code.google.com/p/natvpn/source/browse/trunk/stun_server_list
