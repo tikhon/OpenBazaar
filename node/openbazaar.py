@@ -257,9 +257,20 @@ def create_openbazaar_contexts(arguments, nat_status):
         # Create an OpenBazaarContext object for each development node.
         db_path = os.path.join(defaults['db_dir'], 'this_will_be_ignored')
         db_dirname = os.path.dirname(db_path)
+
         for i in range(arguments.dev_nodes):
             db_dev_filename = defaults['dev_db_file'].format(i)
             db_path = os.path.join(db_dirname, db_dev_filename)
+
+            seed_mode = False
+
+            if arguments.seeds == defaults['seeds']:
+                seeds = [defaults['server_ip']]
+
+            if i == 0:
+                seed_mode = True
+                seeds = []
+
             ob_ctxs.append(OpenBazaarContext(nat_status,
                                              server_ip,
                                              server_port + i,
@@ -272,8 +283,8 @@ def create_openbazaar_contexts(arguments, nat_status):
                                              arguments.bm_user,
                                              arguments.bm_pass,
                                              arguments.bm_port,
-                                             arguments.seeds,
-                                             arguments.seed_mode,
+                                             seeds,
+                                             seed_mode,
                                              arguments.dev_mode,
                                              arguments.dev_nodes,
                                              arguments.disable_upnp,
@@ -321,11 +332,11 @@ def start(arguments):
     if not arguments.disable_stun_check:
         print "Checking NAT Status..."
         nat_status = network_util.check_NAT_status()
-    else:
-        if network_util.is_private_ip_address(arguments.server_ip):
-            print "openbazaar: Could not start. The given/default server IP address " + arguments.server_ip +\
-                  " is not a public ip address.\n(Try 'openbazaar help' and read about the '--server-ip', '-i' options)"
-            sys.exit(1)
+    elif not arguments.dev_mode and network_util.is_private_ip_address(arguments.server_ip):
+        print "openbazaar: Could not start. The given/default server IP address",
+        print arguments.server_ip, "is not a public ip address."
+        print "(Try './openbazaar help' and read about the '--server-ip', '-i' options)"
+        sys.exit(1)
 
     ob_ctxs = create_openbazaar_contexts(arguments, nat_status)
 
