@@ -83,7 +83,7 @@ def create_argument_parser():
     parser.add_argument('-l', '--log', default=default_log_path)
 
     # Add valid commands.
-    parser.add_argument('command', choices=('start', 'stop'))
+    parser.add_argument('command', choices=('start', 'stop', 'help'))
 
     return parser
 
@@ -95,13 +95,14 @@ openbazaar [options] <command>
     COMMANDS
         start            Start OpenBazaar
         stop             Stop OpenBazaar
+        help             Read this help
 
     EXAMPLES
         openbazaar start
         openbazaar --disable-upnp --seed-mode start
         openbazaar --enable-ip-checker start
-        openbazaar -d --dev-nodes 4 -j --disable-stun-check start
-        openbazaar --dev-mode -n 4 --disable-upnp start
+        openbazaar -d --dev-nodes 4 -j --server-ip 79.104.98.111 start
+        openbazaar --dev-mode -n 4 -i 79.104.98.111 start
 
     OPTIONS
     -i, --server-ip <ip address>
@@ -321,9 +322,10 @@ def start(arguments):
         print "Checking NAT Status..."
         nat_status = network_util.check_NAT_status()
     else:
-        assert not network_util.is_private_ip_address(
-            arguments.server_ip
-        ), "Need public IP if not using STUN."
+        if network_util.is_private_ip_address(arguments.server_ip):
+            print "openbazaar: Could not start. The given/default server IP address " + arguments.server_ip +\
+                  " is not a public ip address. (Try 'openbazaar help' and read about the '--server-ip', '-i' options)"
+            sys.exit(1)
 
     ob_ctxs = create_openbazaar_contexts(arguments, nat_status)
 
@@ -411,6 +413,8 @@ def main():
         start(arguments)
     elif arguments.command == 'stop':
         stop()
+    elif arguments.command == 'help':
+        print usage()
 
 
 if __name__ == '__main__':
