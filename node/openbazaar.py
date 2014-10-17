@@ -324,7 +324,7 @@ def start(arguments):
     else:
         if network_util.is_private_ip_address(arguments.server_ip):
             print "openbazaar: Could not start. The given/default server IP address " + arguments.server_ip +\
-                  " is not a public ip address. (Try 'openbazaar help' and read about the '--server-ip', '-i' options)"
+                  " is not a public ip address.\n(Try 'openbazaar help' and read about the '--server-ip', '-i' options)"
             sys.exit(1)
 
     ob_ctxs = create_openbazaar_contexts(arguments, nat_status)
