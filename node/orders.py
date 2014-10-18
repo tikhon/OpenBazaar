@@ -35,7 +35,6 @@ class Orders(object):
 
     def __init__(self, transport, market_id, db):
         self.transport = transport
-        # self._priv = transport._myself
         self.market_id = market_id
         self.log = logging.getLogger('[%s] %s' % (self.market_id, self.__class__.__name__))
         self.gpg = gnupg.GPG()
@@ -360,19 +359,6 @@ class Orders(object):
 
         return {"total": total_orders, "orders": orders}
 
-    # Create a new order
-    # def create_order(self, seller, text):
-    #     order_id = random.randint(0, 1000000)
-    #     buyer = self.transport._myself.public_key.encode('hex')
-    #     new_order = order(order_id, buyer, seller, 'new', text, self._escrows)
-    #
-    #     # Add a timestamp
-    #     new_order['created'] = time.time()
-    #
-    #     self.transport.send(new_order, seller)
-    #
-    #     self.db.insertEntry("orders", new_order)
-
     def ship_order(self, order, order_id, payment_address):
         self.log.info('Shipping order')
 
@@ -642,7 +628,6 @@ class Orders(object):
         # Check signature and verify of seller and bidder contract
         seed_contract = self.get_seed_contract_from_doublesigned(contract)
         seed_contract_json = self.get_json_from_doublesigned_contract(seed_contract)
-        # seed_contract = seed_contract.replace('- -----', '-----')
 
         self.log.debug('seed contract json %s', seed_contract_json)
 
