@@ -63,7 +63,7 @@ def is_private_ip_address(addr):
         return True
     if not is_valid_ip_address(addr):
         return False
-    # http://stackoverflow.com/questions/691045/how-do-you-determine-if-an-ip-address-is-private-in-python
+    # https://goo.gl/Bolmo5 -- Relevant StackOverflow
     f = struct.unpack('!I', socket.inet_pton(socket.AF_INET, addr))[0]
     private = (
         # 127.0.0.0,   255.0.0.0   http://tools.ietf.org/html/rfc3330

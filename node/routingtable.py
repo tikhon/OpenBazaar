@@ -389,7 +389,8 @@ class TreeRoutingTable(RoutingTable):
         """
         # Halve the range of the current (old) k-bucket.
         oldBucket = self.buckets[old_bucket_index]
-        splitPoint = oldBucket.rangeMax - (oldBucket.rangeMax - oldBucket.rangeMin) / 2
+        splitPoint = (oldBucket.rangeMax -
+                      (oldBucket.rangeMax - oldBucket.rangeMin) // 2)
         # Create a new k-bucket to cover the range split off from the old one.
         newBucket = kbucket.KBucket(
             splitPoint, oldBucket.rangeMax, self.market_id
@@ -493,7 +494,8 @@ class OptimizedTreeRoutingTable(TreeRoutingTable):
                 except kbucket.BucketFull:
                     # The bucket is full; see if it can be split (by checking
                     # if its range includes the host node's id)
-                    if self.buckets[bucketIndex].keyInRange(self.parent_node_id):
+                    if self.buckets[bucketIndex].keyInRange(
+                       self.parent_node_id):
                         self.splitBucket(bucketIndex)
                         # Retry the insertion attempt
                         self.addContact(contact)

@@ -37,7 +37,8 @@ class DataStore(UserDict.DictMixin, object):
         was originally published """
         raise NotImplementedError
 
-    def setItem(self, key, value, lastPublished, originallyPublished, originalPublisherID, market_id):
+    def setItem(self, key, value, lastPublished, originallyPublished,
+                originalPublisherID, market_id):
         """ Set the value of the (key, value) pair identified by C{key};
         this should set the "last published" value for the (key, value)
         pair to the current time
@@ -99,7 +100,8 @@ class SqliteDataStore(DataStore):
         was originally published """
         return int(self._dbQuery(key, 'originallyPublished'))
 
-    def setItem(self, key, value, lastPublished, originallyPublished, originalPublisherID, market_id=1):
+    def setItem(self, key, value, lastPublished, originallyPublished,
+                originalPublisherID, market_id=1):
 
         rows = self.db.selectEntries(
             "datastore",
