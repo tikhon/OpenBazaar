@@ -268,7 +268,6 @@ class MarketApplication(tornado.web.Application):
         )
         locallogger.info("Received TERMINATE, exiting...")
 
-        # transport.broadcast_goodbye()
         self.cleanup_upnp_port_mapping()
         tornado.ioloop.IOLoop.instance().stop()
 
