@@ -33,7 +33,8 @@ class PeerConnection(object):
         self.ctx = transport.ctx
         self.socket = self.ctx.socket(zmq.REQ)
         self.socket.setsockopt(zmq.LINGER, 0)
-        self.stream = zmqstream.ZMQStream(self.socket, io_loop=ioloop.IOLoop.current())
+        self.stream = zmqstream.ZMQStream(
+            self.socket, io_loop=ioloop.IOLoop.current())
 
         self.log = logging.getLogger(
             '[%s] %s' % (self.transport.market_id, self.__class__.__name__)
@@ -372,8 +373,9 @@ class CryptoPeerListener(PeerListener):
                     if sigCryptor.verify(sig, data):
                         self.log.info('Verified')
                     else:
-                        self.log.error('Message signature could not be verified %s', msg)
-                        # return
+                        self.log.error(
+                            'Message signature could not be verified %s', msg
+                        )
 
                     msg = json.loads(data)
                     self.log.debug('Message Data %s', msg)

@@ -73,7 +73,9 @@ def create_argument_parser():
     )
     for switches in flags:
         key = arg_to_key(switches[0])
-        parser.add_argument(*switches, action='store_true', default=defaults[key])
+        parser.add_argument(
+            *switches, action='store_true', default=defaults[key]
+        )
 
     # Add miscellaneous flags.
     parser.add_argument('-s', '--seeds', nargs='*', default=defaults['seeds'])

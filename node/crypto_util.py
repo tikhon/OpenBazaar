@@ -20,7 +20,8 @@ def makePrivCryptor(privkey_hex):
                                                           16, 256, minlen=32)
     pubkey_hex = arithmetic.privkey_to_pubkey(privkey_hex)
     pubkey_bin_bare = arithmetic.changebase(pubkey_hex, 16, 256, minlen=65)[1:]
-    pubkey_bin = '\x02\xca\x00 ' + pubkey_bin_bare[:32] + '\x00 ' + pubkey_bin_bare[32:]
+    pubkey_bin = ('\x02\xca\x00 ' + pubkey_bin_bare[:32] + '\x00 ' +
+                  pubkey_bin_bare[32:])
     cryptor = ec.ECC(curve='secp256k1', privkey=privkey_bin, pubkey=pubkey_bin)
     return cryptor
 

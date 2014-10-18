@@ -149,6 +149,7 @@ class BackupJSONEncoder(json.JSONEncoder):
         if isinstance(o, Backup):
             return o.__dict__()
 
+
 def main():
     # tests here.
     def onBackUpDone(backupFilePath):
