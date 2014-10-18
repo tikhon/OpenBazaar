@@ -149,9 +149,6 @@ class ProtocolHandler(object):
             countryCodes.append({"code": country.alpha2, "name": country.name})
 
         settings = self.market.get_settings()
-        # globalTrust = trust.getTrust(self.transport.guid)
-
-        # print(trust.get(self.transport.guid))
 
         message = {
             'type': 'myself',
@@ -162,24 +159,18 @@ class ProtocolHandler(object):
             'sin': self.transport.sin,
             'uri': self.transport.uri,
             'countryCodes': countryCodes,
-            # 'globalTrust': globalTrust
         }
 
-        # print('Sending opening')
         self.send_to_client(None, message)
 
         burnAddr = trust.burnaddr_from_guid(self.transport.guid)
-        # def found_unspent(amount_in_satoshis):
 
         def found_unspent(amount):
-            # print("found_unspent")
             self.send_to_client(None, {
                 'type': 'burn_info_available',
                 'amount': amount,
                 'addr': burnAddr
             })
-
-        # print("getting unspent")
 
         trust.get_unspent(burnAddr, found_unspent)
 
@@ -239,7 +230,6 @@ class ProtocolHandler(object):
     def client_add_trusted_notary(self, socket_handler, msg):
         self.log.info('Adding trusted notary %s', msg)
         self.market.add_trusted_notary(msg.get('guid'), msg.get('nickname'))
-        # self.send_to_client(None, {"type": "load_page"})
 
     def client_add_guid(self, socket_handler, msg):
         self.log.info('Adding node by guid %s', msg)
@@ -386,7 +376,6 @@ class ProtocolHandler(object):
             "Importing New Contract "
             "(NOT IMPLEMENTED! TODO: Market.import_contract(contract)"
         )
-        # self.market.import_contract(contract)
 
     # Get a single order's info
     def client_query_order(self, socket_handler, msg):
@@ -765,11 +754,6 @@ class ProtocolHandler(object):
             msg['key'], callback=self.on_node_search_value
         )
 
-        # response = self.market.lookup(msg)
-        # if response:
-        #     self.log.info(response)
-        # self.send_to_client(*response)
-
     def client_query_network_for_products(self, socket_handler, msg):
 
         self.log.info("Querying for Contracts %s", msg)
@@ -869,12 +853,7 @@ class ProtocolHandler(object):
 
         if len(results):
             if 'listings' in results:
-                # data = results['data']
-                # contracts = data['contracts']
-                # signature = results['signature']
-
                 # TODO: Validate signature of listings matches data
-                # self.transport._myself.
 
                 # Go get listing metadata and then send it to the GUI
                 for contract in results['listings']:
@@ -888,11 +867,6 @@ class ProtocolHandler(object):
                         )
                     )
 
-                # self.send_to_client(None, {
-                #     "type": "store_products",
-                #     "products": listings
-                # })
-
     def client_shout(self, socket_handler, msg):
         msg['uri'] = self.transport.uri
         msg['pubkey'] = self.transport.pubkey
@@ -903,9 +877,6 @@ class ProtocolHandler(object):
     def on_node_search_value(self, results, key):
 
         self.log.debug('Listing Data: %s %s', results, key)
-
-        # Fix newline issue
-        # self.log.info(results_data)
 
         # Import gpg pubkey
         gpg = gnupg.GPG()
@@ -1152,7 +1123,6 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     def _check_request(request):
         return "command" in request and "id" in request and \
                "params" in request and type(request["params"]) == dict
-        # request.has_key("params") and type(request["params"]) == list
 
     def on_message(self, message):
         self.log.info('[On Message]: %s', message)

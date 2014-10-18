@@ -104,9 +104,6 @@ class TransportLayer(object):
                 try:
                     data['senderGUID'] = self.guid
                     data['pubkey'] = self.pubkey
-                    # if peer.pub:
-                    #    peer.send(data, callback)
-                    # else:
 
                     def cb(msg):
                         print msg
@@ -135,8 +132,6 @@ class TransportLayer(object):
         # we get a "clean" msg which is a dict holding whatever
         self.log.info("[On Message] Data received: %s", msg)
 
-        # if not self.routingTable.getContact(msg['senderGUID']):
-        # Add to contacts if doesn't exist yet
         if msg['type'] != 'ok':
             self.trigger_callbacks(msg['type'], msg)
 
@@ -215,10 +210,6 @@ class CryptoTransportLayer(TransportLayer):
         ob_ctx.market_id = self.market_id
 
         self.dht = DHT(self, self.market_id, self.settings, self.db)
-
-        # self._myself = ec.ECC(pubkey=self.pubkey.decode('hex'),
-        #                       privkey=self.secret.decode('hex'),
-        #                       curve='secp256k1')
 
         TransportLayer.__init__(self, ob_ctx, self.guid, self.nickname)
 
@@ -431,7 +422,6 @@ class CryptoTransportLayer(TransportLayer):
         self.secret = hashlib.sha256(secret).hexdigest()
         self.pubkey = privtopub(self.secret)
         self.privkey = random_key()
-        # print 'PRIVATE KEY: ', self.privkey
         self.btc_pubkey = privtopub(self.privkey)
         print 'PUBLIC KEY: ', self.btc_pubkey
 
@@ -575,14 +565,10 @@ class CryptoTransportLayer(TransportLayer):
             pub = pub.decode('hex')
 
         # Create the peer if public key is not already in the peer list
-        # if not self.pubkey_exists(pub):
         self.peers[uri] = connection.CryptoPeerConnection(self, uri, pub, node_guid)
 
         # Call 'peer' callbacks on listeners
         self.trigger_callbacks('peer', self.peers[uri])
-
-        # else:
-        #    print 'Pub Key is already in peer list'
 
     def send(self, data, send_to=None, callback=lambda msg: None):
 
@@ -598,7 +584,6 @@ class CryptoTransportLayer(TransportLayer):
                         peer = activePeer
                         break
 
-            # peer = CryptoPeerConnection(msg['uri'])
             if peer:
                 self.log.debug('Directed Data (%s): %s', send_to, data)
                 try:
