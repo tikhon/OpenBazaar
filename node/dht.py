@@ -183,7 +183,6 @@ class DHT(object):
         findID = msg['findID']
         uri = msg['uri']
         pubkey = msg['pubkey']
-        # nick = msg['senderNick']
 
         assert guid is not None and guid != self.transport.guid
         assert key is not None
@@ -214,15 +213,6 @@ class DHT(object):
 
                 new_peer.send(response_msg)
             else:
-                # UNUSED
-                # Search for contact in routing table
-                # foundContact = self.routingTable.getContact(key)
-                # if foundContact:
-                #     self.log.info('Found the node')
-                #     response_msg["foundNode"] = (foundContact.guid,
-                #                                  foundContact.address,
-                #                                  foundContact.pub)
-                # else:
                 self.log.info('Sending found nodes to: %s', guid)
                 response_msg["foundNodes"] = self.close_nodes(key, guid)
 
@@ -244,9 +234,6 @@ class DHT(object):
 
     def on_findNodeResponse(self, transport, msg):
 
-        # Update pubkey if necessary - happens for seed server
-        # localPeer = next((peer for peer in self.activePeers if peer.guid == msg['senderGUID']), None)
-
         # Update existing peer's pubkey if active peer
         for idx, peer in enumerate(self.activePeers):
             if peer.guid == msg['senderGUID']:
@@ -263,9 +250,6 @@ class DHT(object):
                     s.callback(msg['foundKey'])
                     if idx in self.searches:
                         del self.searches[idx]
-                    # self.searches[msg['findID']].callback(msg['foundKey'])
-
-                    # Remove active search
 
         else:
 
@@ -292,9 +276,6 @@ class DHT(object):
                         del self.searches[idx]
 
             else:
-
-                # Add any close nodes found to the shortlist
-                # self.extendShortlist(transport, msg['findID'], msg['foundNodes'])
 
                 foundSearch = False
                 search = ""
@@ -709,17 +690,6 @@ class DHT(object):
         # Determine if we're looking for a node or a key
         findValue = True if call != 'findNode' else False
 
-        # If search is for your key abandon search
-        # if not findValue and key == self.settings['guid']:
-        #     return 'You are looking for yourself'
-
-        # If looking for a node check in your active peers list first to prevent unnecessary searching
-        # if not findValue:
-        #     self.log.info('Looking for node in your active connections list')
-        #     for node in self.activePeers:
-        #         if node.guid == key:
-        #             return [node]
-
         if startupShortlist == [] or startupShortlist is None:
 
             # Retrieve closest nodes and add them to the shortlist for the search
@@ -758,9 +728,6 @@ class DHT(object):
         self.activePeers.sort(lambda firstNode, secondNode, targetKey=new_search.key: cmp(
             self.routingTable.distance(firstNode.guid, targetKey),
             self.routingTable.distance(secondNode.guid, targetKey)))
-
-        # while len(self.pendingIterationCalls):
-        # del self.pendingIterationCalls[0]
 
         # TODO: Put this in the callback
         # if new_search.key in new_search.find_value_result:
@@ -829,9 +796,6 @@ class DHT(object):
 
                     else:
                         self.log.error('No contact was found for this guid: %s', node[2])
-
-            # if new_search.contactedNow == constants.alpha:
-            #     break
 
     def activeSearchExists(self, findID):
 

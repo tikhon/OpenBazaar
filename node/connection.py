@@ -100,7 +100,6 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
         GUIDMixin.__init__(self, guid)
         PeerConnection.__init__(self, transport, address, nickname)
 
-        # self._priv = transport._myself
         self.pub = pub
 
         # Convert URI over

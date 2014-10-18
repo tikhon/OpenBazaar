@@ -4,7 +4,6 @@ import re
 import urllib2
 
 import obelisk
-# import pybitcointools
 
 # Create new private key:
 #
@@ -45,7 +44,6 @@ class Multisig(object):
 
     @property
     def script(self):
-        # return pybitcointools.mk_multisig_script(self.pubkeys, 2, 3)
         result = chr(80 + self.number_required)
         for pubkey in self.pubkeys:
             result += chr(33) + pubkey
@@ -57,16 +55,9 @@ class Multisig(object):
     @property
     def address(self):
 
-        # script = self.script
-        # print 'multisig-script',script
-        #
-        # address = pybitcointools.scriptaddr(script)
-        # return address
-
         raw_addr = obelisk.hash_160(self.script)
         return obelisk.hash_160_to_bc_address(raw_addr, addrtype=0x05)
 
-    #
     def create_unsigned_transaction(self, destination, finished_cb):
         def fetched(ec, history):
             if ec is not None:
@@ -76,13 +67,11 @@ class Multisig(object):
 
         self.client.fetch_history(self.address, fetched)
 
-    #
     def _fetched(self, history, destination, finished_cb):
         unspent = [row[:4] for row in history if row[4] is None]
         tx = self._build_actual_tx(unspent, destination)
         finished_cb(tx)
 
-    #
     @staticmethod
     def _build_actual_tx(unspent, destination):
 

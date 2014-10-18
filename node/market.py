@@ -411,20 +411,6 @@ class Market(object):
         # Updating the DHT index of your store's listings
         self.update_listings_index()
 
-        # If keywords store them in the keyword index
-        # keywords = msg['Contract']['item_keywords']
-        # self.log.info('Keywords: %s' % keywords)
-        # for keyword in keywords:
-        #
-        #     hash_value = hashlib.new('ripemd160')
-        #     hash_value.update('keyword-%s' % keyword)
-        #     keyword_key = hash_value.hexdigest()
-        #
-        #     self.transport.store(
-        #         keyword_key,
-        #         json.dumps({'keyword_index_add': contract_key}),
-        #         self.transport.guid)
-
     def update_listings_index(self):
         """This method is responsible for updating the DHT index of your
            store's listings. There is a dictionary in the DHT that has an
@@ -628,7 +614,6 @@ class Market(object):
 
     def save_settings(self, msg):
         """Update local settings"""
-        # self.log.debug("Settings to save %s", msg)
 
         # Check for any updates to arbiter or notary status to push to the DHT
         if 'notary' in msg:
@@ -685,8 +670,6 @@ class Market(object):
 
         settings['btc_pubkey'] = privkey_to_pubkey(settings.get('privkey'))
         settings['secret'] = settings.get('secret')
-
-        # self.log.info("SETTINGS: %s", settings)
 
         if settings:
             return settings
