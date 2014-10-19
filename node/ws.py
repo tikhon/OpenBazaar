@@ -22,7 +22,8 @@ import trust
 
 
 class ProtocolHandler(object):
-    def __init__(self, transport, market_application, handler, db, loop_instance):
+    def __init__(self, transport, market_application, handler, db,
+                 loop_instance):
         self.market_application = market_application
         self.market = self.market_application.market
         self.transport = transport
@@ -487,12 +488,13 @@ class ProtocolHandler(object):
                 # Create unsigned transaction
                 unspent = [row[:4] for row in history if row[4] is None]
 
-                # Send all unspent outputs (everything in the address) minus the fee
+                # Send all unspent outputs (everything in the address) minus
+                # the fee
                 total_amount = 0
                 inputs = []
                 for row in unspent:
                     assert len(row) == 4, 'Obelisk returned a wonky row'
-                    inputs.append(str(row[0].encode('hex')) + ":" + str(row[1]))
+                    inputs.append("%s:%s" % (row[0].encode('hex'), row[1]))
                     value = row[3]
                     total_amount += value
 
@@ -503,14 +505,18 @@ class ProtocolHandler(object):
                 payment_output = order['payment_address']
                 tx = mktx(inputs, ["%s:%s" % (payment_output, send_amount)])
 
-                signatures = [multisign(tx, x, script, private_key) for x in range(len(inputs))]
+                signatures = [multisign(tx, x, script, private_key)
+                              for x in range(len(inputs))]
 
                 self.market.release_funds_to_merchant(
-                    buyer['buyer_order_id'], tx, script, signatures, order.get('merchant')
+                    buyer['buyer_order_id'], tx, script, signatures,
+                    order.get('merchant')
                 )
 
             def get_history():
-                client.fetch_history(multi_address, lambda ec, history, order=order: cb(ec, history, order))
+                client.fetch_history(
+                    multi_address,
+                    lambda ec, history, order=order: cb(ec, history, order))
 
             Thread(target=get_history).start()
         except Exception as e:
@@ -584,7 +590,8 @@ class ProtocolHandler(object):
                 # Create unsigned transaction
                 unspent = [row[:4] for row in history if row[4] is None]
 
-                # Send all unspent outputs (everything in the address) minus the fee
+                # Send all unspent outputs (everything in the address) minus
+                # the fee
                 total_amount = 0
                 inputs = []
                 for row in unspent:
@@ -636,7 +643,7 @@ class ProtocolHandler(object):
     def on_release_funds_tx(self, msg):
         self.log.info('Receiving signed tx from buyer')
 
-        buyer_order_id = str(msg['senderGUID']) + '-' + str(msg['buyer_order_id'])
+        buyer_order_id = "%s-%s" % (msg['senderGUID'], msg['buyer_order_id'])
         order = self.market.orders.get_order(buyer_order_id, by_buyer_id=True)
         contract = order['signed_contract_body']
 
@@ -689,7 +696,8 @@ class ProtocolHandler(object):
 
                 unspent = [row[:4] for row in history if row[4] is None]
 
-                # Send all unspent outputs (everything in the address) minus the fee
+                # Send all unspent outputs (everything in the address) minus
+                # the fee
                 inputs = []
                 for row in unspent:
                     assert len(row) == 4
@@ -777,7 +785,8 @@ class ProtocolHandler(object):
         """Currently hard-coded for testing: need to find out Installation path.
         Talk to team about right location for backup files
         they might have to be somewhere outside the installation path
-        as some OSes might not allow the modification of the installation folder
+        as some OSes might not allow the modification of the installation
+        folder
         e.g. MacOS won't allow for changes if the .app has been signed.
         and all files created by the app, have to be outside, usually at
         ~/Library/Application Support/OpenBazaar/backups ??
@@ -841,8 +850,8 @@ class ProtocolHandler(object):
             for contract in contracts:
                 self.transport.dht.iterativeFindValue(
                     contract,
-                    callback=lambda msg, key=contract: self.on_node_search_value(
-                        msg, key
+                    callback=lambda msg, key=contract: (
+                        self.on_node_search_value(msg, key)
                     )
                 )
 
@@ -862,8 +871,8 @@ class ProtocolHandler(object):
 
                     self.transport.dht.iterativeFindValue(
                         key,
-                        callback=lambda msg, key=key: self.on_global_search_value(
-                            msg, key
+                        callback=lambda msg, key=key: (
+                            self.on_global_search_value(msg, key)
                         )
                     )
 
