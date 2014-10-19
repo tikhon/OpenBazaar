@@ -80,7 +80,7 @@ class Obdb(object):
         @param where_dict: A dictionary with the WHERE clauses
         """
         if where_dict is None:
-            where_dict = {'"1"':'1'}
+            where_dict = {'"1"': '1'}
 
         self._connectToDb()
         with self.con:
@@ -136,7 +136,7 @@ class Obdb(object):
                 setfield_part.append("?")
             updatefield_part = ",".join(updatefield_part)
             setfield_part = ",".join(setfield_part)
-            query = "INSERT INTO %s(%s) VALUES(%s)"  % (
+            query = "INSERT INTO %s(%s) VALUES(%s)" % (
                 table, updatefield_part, setfield_part
             )
             cur.execute(query, tuple(sets))
@@ -156,7 +156,7 @@ class Obdb(object):
                            If ommited it will return all the rows of the table.
         """
         if where_dict is None:
-            where_dict = {'"1"':'1'}
+            where_dict = {'"1"': '1'}
         self._connectToDb()
         with self.con:
             cur = self.con.cursor()
@@ -197,7 +197,7 @@ class Obdb(object):
                            If ommited it will delete all the rows of the table.
         """
         if where_dict is None:
-            where_dict = {'"1"':'1'}
+            where_dict = {'"1"': '1'}
 
         self._connectToDb()
         with self.con:

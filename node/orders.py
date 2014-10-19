@@ -780,7 +780,7 @@ class Orders(object):
         self.db.updateEntries(
             "orders",
             {'state': Orders.State.BUYER_PAID, 'shipping_address': json.dumps(msg['shipping_address']),
-                                                                             "updated": time.time()},
+             "updated": time.time()},
             {'buyer_order_id': buyer_order_id}
         )
         if self.transport.handler is not None:

@@ -199,6 +199,7 @@ class PortMappingEntry(object):
                ', expiration: ' + str(self.expiration) + \
                '}'
 
+
 def main():
     # Test code
     PortMapper.DEBUG = True
