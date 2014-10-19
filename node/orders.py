@@ -887,7 +887,7 @@ class Orders(object):
                     'buyer': bid_data_json['Buyer']['buyer_GUID'],
                     'notary': notary_data_json['Notary']['notary_GUID'],
                     'address': multisig_address,
-                    'shipping_address': self.transport._myself.decrypt(
+                    'shipping_address': self.transport.cryptor.decrypt(
                         bid_data_json['Buyer']['buyer_deliveryaddr'].decode('hex')),
                     'item_price': offer_data_json['Contract'].get('item_price', 0),
                     'shipping_price': offer_data_json['Contract']['item_delivery'].get('shipping_price', 0),

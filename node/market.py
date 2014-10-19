@@ -17,7 +17,7 @@ from pybitcointools.main import privkey_to_pubkey
 import tornado
 
 import constants
-from crypto_util import makePrivCryptor
+from crypto_util import Cryptor
 from data_uri import DataURI
 from orders import Orders
 from protocol import proto_page, query_page
@@ -439,12 +439,16 @@ class Market(object):
         # Sign listing index for validation and tamper resistance
         data_string = str({'guid': self.transport.guid,
                            'contracts': my_contracts})
-        signature = makePrivCryptor(
-            self.transport.settings['secret']).sign(data_string).encode('hex')
+        cryptor = Cryptor(privkey_hex=self.transport.settings['secret'])
+        signature = cryptor.sign(data_string)
 
-        value = {'signature': signature,
-                 'data': {'guid': self.transport.guid,
-                          'contracts': my_contracts}}
+        value = {
+            'signature': signature.encode('hex'),
+            'data': {
+                'guid': self.transport.guid,
+                'contracts': my_contracts
+            }
+        }
 
         # Pass off to thread to keep GUI snappy
         t = Thread(

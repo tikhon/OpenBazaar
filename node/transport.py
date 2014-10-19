@@ -11,7 +11,6 @@ import xmlrpclib
 
 import gnupg
 import obelisk
-import pyelliptic as ec
 from pybitcointools.main import privkey_to_pubkey, privtopub, random_key
 from pysqlcipher.dbapi2 import OperationalError, DatabaseError
 import zmq
@@ -19,10 +18,10 @@ from zmq.eventloop import ioloop
 from zmq.eventloop.ioloop import PeriodicCallback
 
 import connection
-from crypto_util import pubkey_to_pyelliptic
+from crypto_util import Cryptor
 from dht import DHT
-from protocol import hello_request, hello_response, goodbye, proto_response_pubkey
 import network_util
+from protocol import hello_request, hello_response, goodbye, proto_response_pubkey
 
 
 class TransportLayer(object):
@@ -405,11 +404,7 @@ class CryptoTransportLayer(TransportLayer):
             if self.bitmessage_api is not None:
                 self._generate_new_bitmessage_address()
 
-        self._myself = ec.ECC(
-            pubkey=pubkey_to_pyelliptic(self.pubkey).decode('hex'),
-            raw_privkey=self.secret.decode('hex'),
-            curve='secp256k1'
-        )
+        self.cryptor = Cryptor(pubkey_hex=self.pubkey, privkey_hex=self.secret)
 
         # In case user wants to override with command line passed bitmessage values
         if self.ob_ctx.bm_user is not None and \
@@ -527,7 +522,7 @@ class CryptoTransportLayer(TransportLayer):
             if peer.pub:
                 peers[uri] = peer.pub.encode('hex')
         return {'uri': self.uri,
-                'pub': self._myself.get_pubkey().encode('hex'),
+                'pub': self.cryptor.get_pubkey().encode('hex'),
                 'nickname': self.nickname,
                 'peers': peers}
 
@@ -538,7 +533,7 @@ class CryptoTransportLayer(TransportLayer):
             return
 
         # Return signed pubkey
-        pubkey = self._myself.pubkey
+        pubkey = self.cryptor.pubkey  # XXX: Neither a Cryptor nor ECC has such a field.
         ec_key = obelisk.EllipticCurveKey()
         ec_key.set_secret(self.secret)
         digest = obelisk.Hash(pubkey)

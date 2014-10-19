@@ -7,15 +7,12 @@ from urlparse import urlparse
 import zlib
 
 import obelisk
-import pyelliptic as ec
 import zmq
 from zmq.error import ZMQError
 from zmq.eventloop import ioloop, zmqstream
 
 import constants
-from crypto_util import (
-    makePubCryptor, hexToPubkey, makePrivCryptor, pubkey_to_pyelliptic
-)
+from crypto_util import Cryptor
 from guid import GUIDMixin
 import network_util
 
@@ -169,7 +166,7 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
         return obelisk.EncodeBase58Check('\x0F\x02%s' + guid.decode('hex'))
 
     def sign(self, data):
-        cryptor = makePrivCryptor(self.transport.settings['secret'])
+        cryptor = Cryptor(privkey_hex=self.transport.settings['secret'])
         return cryptor.sign(data)
 
     def encrypt(self, data):
@@ -178,8 +175,8 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
         @raises Exception: The encryption failed.
         """
         assert self.pub, "Attempt to encrypt without key."
-        hexkey = hexToPubkey(self.pub)
-        return ec.ECC.encrypt(data, hexkey)
+        cryptor = Cryptor(pubkey_hex=self.pub)
+        return cryptor.encrypt(data)
 
     def send(self, data, callback=lambda msg: None):
 
@@ -336,11 +333,7 @@ class CryptoPeerListener(PeerListener):
         # FIXME: refactor this mess
         # this was copied as is from CryptoTransportLayer
         # soon all crypto code will be refactored and this will be removed
-        self._myself = ec.ECC(
-            pubkey=pubkey_to_pyelliptic(self.pubkey).decode('hex'),
-            raw_privkey=self.secret.decode('hex'),
-            curve='secp256k1'
-        )
+        self.cryptor = Cryptor(pubkey_hex=self.pubkey, privkey_hex=self.secret)
 
     def _on_raw_message(self, serialized):
         try:
@@ -356,7 +349,7 @@ class CryptoPeerListener(PeerListener):
                 sig = msg.get('sig').decode('hex')
 
                 try:
-                    cryptor = makePrivCryptor(self.secret)
+                    cryptor = Cryptor(privkey_hex=self.secret)
 
                     try:
                         data = cryptor.decrypt(data)
@@ -368,8 +361,8 @@ class CryptoPeerListener(PeerListener):
 
                     # Check signature
                     data_json = json.loads(data)
-                    sigCryptor = makePubCryptor(data_json['pubkey'])
-                    if sigCryptor.verify(sig, data):
+                    cryptor = Cryptor(pubkey_hex=data_json['pubkey'])
+                    if cryptor.verify(sig, data):
                         self.log.info('Verified')
                     else:
                         self.log.error(
@@ -383,7 +376,7 @@ class CryptoPeerListener(PeerListener):
 
         except ValueError:
             try:
-                msg = self._myself.decrypt(serialized)
+                msg = self.cryptor.decrypt(serialized)
                 msg = json.loads(msg)
 
                 self.log.info(
