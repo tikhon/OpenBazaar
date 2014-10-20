@@ -46,9 +46,6 @@ class TransportLayer(object):
             '[%s] %s' % (ob_ctx.market_id, self.__class__.__name__)
         )
 
-    def start_listener(self):
-        raise NotImplementedError
-
     def add_callbacks(self, callbacks):
         for section, callback in callbacks:
             self.callbacks[section] = []
@@ -74,9 +71,6 @@ class TransportLayer(object):
                 if cb['validator_cb'](*data):
                     cb['cb'](*data)
 
-    def get_profile(self):
-        raise NotImplementedError
-
     def _init_peer(self, msg):
         raise NotImplementedError
 
@@ -91,20 +85,8 @@ class TransportLayer(object):
         """
         self.dht.iterativeStore(*args, **kwargs)
 
-    def broadcast_goodbye(self):
-        self.log.info("Broadcast goodbye")
-        msg = goodbye({'uri': self.uri})
-        self.send(msg)
-
     def _on_message(self, msg):
         raise NotImplementedError
-
-    def _on_raw_message(self, msg):
-        msg_type = msg.get('type')
-        if msg_type == 'hello_request' and msg.get('uri'):
-            self._init_peer(msg)
-        else:
-            self._on_message(msg)
 
     def valid_peer_uri(self, uri):
         try:
@@ -129,9 +111,6 @@ class TransportLayer(object):
                 return False
 
         return True
-
-    def shutdown(self):
-        raise NotImplementedError
 
 
 class CryptoTransportLayer(TransportLayer):
@@ -504,18 +483,6 @@ class CryptoTransportLayer(TransportLayer):
 
         # Send array of nickname, pubkey, signature to transport layer
         self.send(proto_response_pubkey(nickname, pubkey, signature))
-
-    def pubkey_exists(self, pub):
-
-        for peer in self.peers.itervalues():
-            self.log.info(
-                'PEER: %s Pub: %s',
-                peer.pub.encode('hex'), pub.encode('hex')
-            )
-            if peer.pub.encode('hex') == pub.encode('hex'):
-                return True
-
-        return False
 
     def create_peer(self, uri, pub, node_guid):
 
