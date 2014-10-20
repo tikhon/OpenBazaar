@@ -96,7 +96,7 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
         self.sin = sin
         self.address = "tcp://%s:%s" % (self.ip, self.port)
 
-    def start_handshake(self, handshake_cb=None):
+    def start_handshake(self, initial_handshake_cb=None):
         def cb(msg, handshake_cb=None):
             if not msg:
                 return
@@ -130,9 +130,9 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
 
             self.transport.dht.activePeers.append(self)
             self.transport.dht.routingTable.addContact(self)
-
-            if handshake_cb is not None:
-                handshake_cb()
+            
+            if initial_handshake_cb is not None:
+                initial_handshake_cb()
 
         self.send_raw(
             json.dumps({

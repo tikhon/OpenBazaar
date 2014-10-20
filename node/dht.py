@@ -139,11 +139,8 @@ class DHT(object):
 
         def cb():
             self.log.debug('Back from handshake %s', new_peer)
-            self.routingTable.removeContact(new_peer.guid)
-            self.routingTable.addContact(new_peer)
             self.transport.save_peer_to_db(peer_tuple)
-            self.add_known_node((new_peer.address, new_peer.pub, new_peer.guid, new_peer.nickname))
-
+            
         t = Thread(target=new_peer.start_handshake, args=(cb,))
         t.start()
 
