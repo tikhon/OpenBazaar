@@ -34,11 +34,16 @@ function brewDoctor {
 }
 
 function brewUpgrade {
-    if ! brew upgrade; then
-      echo ""
-      echo "There were errors when attempting to 'brew upgrade' and there could be issues with the installation of OpenBazaar."
-      echo ""
-      read -p "Press [Enter] to continue anyway or [ctrl + c] to exit and fix those errors."
+    echo "If your homebrew packages are outdated, we recommend upgrading them now. This may take some time."
+    read -r -p "Do you want to do this? [y/N] " response
+    if [[ $response =~ ^([yY][eE][sS]|[yY])$ ]]
+    then
+      if ! brew upgrade; then
+        echo ""
+        echo "There were errors when attempting to 'brew upgrade' and there could be issues with the installation of OpenBazaar."
+        echo ""
+        read -p "Press [Enter] to continue anyway or [ctrl + c] to exit and fix those errors."
+      fi
     fi
 }
 
@@ -54,10 +59,10 @@ function installMac {
     echo "updating, upgrading, checking brew..."
     brew update
     brewDoctor
-    brewUpgrade 
+    brewUpgrade
     brew prune
   fi
-  
+
   # install gpg/sqlite3/python/wget if they aren't installed
   for dep in gpg sqlite3 python wget
   do
