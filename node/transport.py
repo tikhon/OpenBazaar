@@ -47,8 +47,7 @@ class TransportLayer(object):
         )
 
     def start_listener(self):
-        self.listener = connection.PeerListener(self.ip, self.port, self.ctx, self._on_raw_message)
-        self.listener.listen()
+        raise NotImplementedError
 
     def add_callbacks(self, callbacks):
         for section, callback in callbacks:
@@ -63,8 +62,7 @@ class TransportLayer(object):
             self.callbacks[section].append(callback)
 
     def trigger_callbacks(self, section, *data):
-
-        # Run all callbacks in specified section
+        """Run all callbacks in specified section."""
         for cb in self.callbacks[section]:
             if cb['validator_cb'](*data):
                 cb['cb'](*data)
@@ -77,40 +75,13 @@ class TransportLayer(object):
                     cb['cb'](*data)
 
     def get_profile(self):
-        return hello_request({'uri': self.uri})
+        raise NotImplementedError
 
     def _init_peer(self, msg):
-        uri = msg['uri']
-
-        if uri not in self.peers:
-            self.peers[uri] = connection.PeerConnection(self, uri)
+        raise NotImplementedError
 
     def send(self, data, send_to=None, callback=lambda msg: None):
-
-        self.log.info("Outgoing Data: %s %s", data, send_to)
-        data['senderNick'] = self.nickname
-
-        # Directed message
-        if send_to is not None:
-            peer = self.dht.routingTable.getContact(send_to)
-            peer.send(data, callback=callback)
-            return
-
-        else:
-            # FindKey and then send
-
-            for peer in self.dht.activePeers:
-                try:
-                    data['senderGUID'] = self.guid
-                    data['pubkey'] = self.pubkey
-
-                    def cb(msg):
-                        print msg
-                    peer.send(data, cb)
-
-                except Exception:
-                    self.log.info("Error sending over peer!")
-                    traceback.print_exc()
+        raise NotImplementedError
 
     def store(self, *args, **kwargs):
         """
@@ -126,13 +97,7 @@ class TransportLayer(object):
         self.send(msg)
 
     def _on_message(self, msg):
-
-        # here goes the application callbacks
-        # we get a "clean" msg which is a dict holding whatever
-        self.log.info("[On Message] Data received: %s", msg)
-
-        if msg['type'] != 'ok':
-            self.trigger_callbacks(msg['type'], msg)
+        raise NotImplementedError
 
     def _on_raw_message(self, msg):
         msg_type = msg.get('type')
@@ -217,7 +182,6 @@ class CryptoTransportLayer(TransportLayer):
             self.start_ip_address_checker()
 
     def start_listener(self):
-
         self.add_callbacks([
             (
                 msg,
