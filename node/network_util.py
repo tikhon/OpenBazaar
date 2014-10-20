@@ -1,9 +1,8 @@
 import re
-import socket
-import struct
+
+from IPy import IP, IPint
 import requests
 from requests.exceptions import RequestException
-from IPy import IPint
 import stun
 
 
@@ -50,35 +49,8 @@ def is_valid_protocol(protocol):
     return protocol == 'tcp'
 
 
-def is_valid_ip_address(addr):
-    try:
-        socket.inet_aton(addr)
-        return True
-    except socket.error:
-        return False
-
-
 def is_private_ip_address(addr):
-    if is_loopback_addr(addr):
-        return True
-    if not is_valid_ip_address(addr):
-        return False
-    # https://goo.gl/Bolmo5 -- Relevant StackOverflow
-    f = struct.unpack('!I', socket.inet_pton(socket.AF_INET, addr))[0]
-    private = (
-        # 127.0.0.0,   255.0.0.0   http://tools.ietf.org/html/rfc3330
-        [2130706432, 4278190080],
-        # 192.168.0.0, 255.255.0.0 http://tools.ietf.org/html/rfc1918
-        [3232235520, 4294901760],
-        # 172.16.0.0,  255.240.0.0 http://tools.ietf.org/html/rfc1918
-        [2886729728, 4293918720],
-        # 10.0.0.0,    255.0.0.0   http://tools.ietf.org/html/rfc1918
-        [167772160, 4278190080],
-    )
-    for net in private:
-        if f & net[1] == net[0]:
-            return True
-    return False
+    return is_loopback_addr(addr) or IP(addr).iptype() != 'PUBLIC'
 
 
 def uri_parts(uri):
@@ -103,7 +75,7 @@ def is_ipv6_address(ip):
     return address.version == 6
 
 
-def get_peer_url(address, port):
+def get_peer_url(address, port, protocol='tcp'):
     """
     Returns a url for a peer that can be used by ZMQ
 
@@ -120,6 +92,6 @@ def get_peer_url(address, port):
 
     if is_ipv6:
         # an IPv6 address must be enclosed in brackets
-        return 'tcp://[%s]:%s' % (address, port)
+        return '%s://[%s]:%s' % (protocol, address, port)
     else:
-        return 'tcp://%s:%s' % (address, port)
+        return '%s://%s:%s' % (protocol, address, port)

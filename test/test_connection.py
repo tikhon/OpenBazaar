@@ -18,7 +18,6 @@ class TestPeerConnection(unittest.TestCase):
         cls.port = 54321
         cls.address = cls._mk_address(cls.protocol, cls.hostname, cls.port)
         cls.nickname = "OpenBazaar LightYear"
-        cls.responses_received = {}
         cls.pub = "YELLOW SUBMARINE"
         cls.timeout = 10
         cls.transport = mock.Mock()
@@ -38,7 +37,6 @@ class TestPeerConnection(unittest.TestCase):
         self.assertEqual(self.pc1.transport, self.transport)
         self.assertEqual(self.pc1.address, self.address)
         self.assertEqual(self.pc1.nickname, self.default_nickname)
-        self.assertEqual(self.pc1.responses_received, self.responses_received)
         self.assertIsNotNone(self.pc1.ctx)
 
         self.assertEqual(self.pc2.nickname, self.nickname)
