@@ -140,7 +140,7 @@ class DHT(object):
         def cb():
             self.log.debug('Back from handshake %s', new_peer)
             self.transport.save_peer_to_db(peer_tuple)
-            
+
         t = Thread(target=new_peer.start_handshake, args=(cb,))
         t.start()
 

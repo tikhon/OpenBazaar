@@ -130,7 +130,7 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
 
             self.transport.dht.activePeers.append(self)
             self.transport.dht.routingTable.addContact(self)
-            
+
             if initial_handshake_cb is not None:
                 initial_handshake_cb()
 
@@ -250,20 +250,20 @@ class PeerListener(object):
                 # specified IP
                 self.socket.bind(self.uri)
             except ZMQError as e:
-                error_message = "".join(
-                    "PeerListener.listen() error:",
-                    "Could not bind socket to %s" % self.uri,
+                error_message = "".join([
+                    "PeerListener.listen() error: ",
+                    "Could not bind socket to %s. " % self.uri,
                     "Details:\n",
-                    "(%s)" % e)
+                    "(%s)" % e])
 
                 if platform.system() == 'Darwin':
-                    error_message.join(
+                    error_message.join([
                         "\n\nPerhaps you have not added a ",
                         "loopback alias yet.\n",
                         "Try this on your terminal and restart ",
                         "OpenBazaar in development mode again:\n",
                         "\n\t$ sudo ifconfig lo0 alias 127.0.0.2",
-                        "\n\n")
+                        "\n\n"])
                 raise Exception(error_message)
         elif '[' in self.ip:
             self.socket.ipv6 = True
