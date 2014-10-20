@@ -71,12 +71,6 @@ class TransportLayer(object):
                 if cb['validator_cb'](*data):
                     cb['cb'](*data)
 
-    def _init_peer(self, msg):
-        raise NotImplementedError
-
-    def send(self, data, send_to=None, callback=lambda msg: None):
-        raise NotImplementedError
-
     def store(self, *args, **kwargs):
         """
         Store or republish data.
@@ -84,9 +78,6 @@ class TransportLayer(object):
         Refer to the dht module (iterativeStore()) for further details.
         """
         self.dht.iterativeStore(*args, **kwargs)
-
-    def _on_message(self, msg):
-        raise NotImplementedError
 
     def valid_peer_uri(self, uri):
         try:
@@ -559,48 +550,6 @@ class CryptoTransportLayer(TransportLayer):
                 msg['type'], uri
             )
             self.peers[uri].send_raw(json.dumps(msg))
-
-    def _init_peer(self, msg):
-
-        uri = msg['uri']
-        pub = msg.get('pub')
-        nickname = msg.get('nickname')
-        msg_type = msg.get('type')
-        guid = msg['guid']
-
-        if not self.valid_peer_uri(uri):
-            self.log.error("Invalid Peer: %s", uri)
-            return
-
-        if uri not in self.peers:
-            # Unknown peer
-            self.log.info('Add New Peer: %s', uri)
-            self.create_peer(uri, pub, guid)
-
-            if not msg_type:
-                self.send_enc(uri, hello_request(self.get_profile()))
-            elif msg_type == 'hello_request':
-                self.send_enc(uri, hello_response(self.get_profile()))
-
-        else:
-            # Known peer
-            if pub:
-                # test if we have to update the pubkey
-                if not self.peers[uri].pub:
-                    self.log.info("Setting public key for seed node")
-                    self.peers[uri].pub = pub.decode('hex')
-                    self.trigger_callbacks('peer', self.peers[uri])
-
-                if self.peers[uri].pub != pub.decode('hex'):
-                    self.log.info("Updating public key for node")
-                    self.peers[uri].nickname = nickname
-                    self.peers[uri].pub = pub.decode('hex')
-
-                    self.trigger_callbacks('peer', self.peers[uri])
-
-            if msg_type == 'hello_request':
-                # reply only if necessary
-                self.send_enc(uri, hello_response(self.get_profile()))
 
     def _on_message(self, msg):
 
