@@ -4,6 +4,7 @@ import json
 import logging
 from pprint import pformat
 import random
+import sys
 from threading import Thread
 import traceback
 from urlparse import urlparse
@@ -25,7 +26,8 @@ from protocol import proto_response_pubkey
 
 
 class TransportLayer(object):
-    # Transport layer manages a list of peers
+    """TransportLayer manages a list of peers."""
+
     def __init__(self, ob_ctx, guid, nickname=None):
         self.peers = {}
         self.callbacks = defaultdict(list)
@@ -71,14 +73,6 @@ class TransportLayer(object):
                 if cb['validator_cb'](*data):
                     cb['cb'](*data)
 
-    def store(self, *args, **kwargs):
-        """
-        Store or republish data.
-
-        Refer to the dht module (iterativeStore()) for further details.
-        """
-        self.dht.iterativeStore(*args, **kwargs)
-
 
 class CryptoTransportLayer(TransportLayer):
 
@@ -113,15 +107,10 @@ class CryptoTransportLayer(TransportLayer):
             'store'
         )
 
-        # Set up
         self._setup_settings()
-
         ob_ctx.market_id = self.market_id
-
         self.dht = DHT(self, self.market_id, self.settings, self.db)
-
         TransportLayer.__init__(self, ob_ctx, self.guid, self.nickname)
-
         self.start_listener()
 
         if ob_ctx.enable_ip_checker and not ob_ctx.seed_mode and not ob_ctx.dev_mode:
@@ -218,12 +207,6 @@ class CryptoTransportLayer(TransportLayer):
             self.bitmessage_api = None
         return result
 
-    def get_dht(self):
-        return self.dht
-
-    def get_market_id(self):
-        return self.market_id
-
     def validate_on_hello(self, msg):
         self.log.debug('Validating ping message.')
         return True
@@ -266,7 +249,7 @@ class CryptoTransportLayer(TransportLayer):
             self.settings = self.settings[0]
 
         # Generate PGP key during initial setup or if previous PGP gen failed
-        if not ('PGPPubKey' in self.settings and self.settings["PGPPubKey"]):
+        if not self.settings.get('PGPPubKey'):
             try:
                 self.log.info('Generating PGP keypair. This may take several minutes...')
                 print 'Generating PGP keypair. This may take several minutes...'
@@ -287,28 +270,27 @@ class CryptoTransportLayer(TransportLayer):
 
                 self.log.info('PGP keypair generated.')
             except Exception as e:
-                self.log.error("Encountered a problem with GPG: %s", e)
-                raise SystemExit("Encountered a problem with GPG: %s" % e)
+                sys.exit("Encountered a problem with GPG: %s" % e)
 
-        if not ('pubkey' in self.settings and self.settings['pubkey']):
+        if not self.settings.get('pubkey'):
             # Generate Bitcoin keypair
             self._generate_new_keypair()
 
-        if not ('nickname' in self.settings and self.settings['nickname']):
+        if not self.settings.get('nickname'):
             newsettings = {'nickname': 'Default'}
             self.db.updateEntries('settings', newsettings, {"market_id": self.market_id})
             self.settings.update(newsettings)
 
-        self.nickname = self.settings['nickname'] if 'nickname' in self.settings else ""
-        self.secret = self.settings['secret'] if 'secret' in self.settings else ""
-        self.pubkey = self.settings['pubkey'] if 'pubkey' in self.settings else ""
+        self.nickname = self.settings.get('nickname', '')
+        self.secret = self.settings.get('secret', '')
+        self.pubkey = self.settings.get('pubkey', '')
         self.privkey = self.settings.get('privkey')
         self.btc_pubkey = privkey_to_pubkey(self.privkey)
-        self.guid = self.settings['guid'] if 'guid' in self.settings else ""
-        self.sin = self.settings['sin'] if 'sin' in self.settings else ""
-        self.bitmessage = self.settings['bitmessage'] if 'bitmessage' in self.settings else ""
+        self.guid = self.settings.get('guid', '')
+        self.sin = self.settings.get('sin', '')
+        self.bitmessage = self.settings.get('bitmessage', '')
 
-        if not ('bitmessage' in self.settings and self.settings['bitmessage']):
+        if not self.settings.get('bitmessage'):
             # Generate Bitmessage address
             if self.bitmessage_api is not None:
                 self._generate_new_bitmessage_address()
@@ -335,8 +317,8 @@ class CryptoTransportLayer(TransportLayer):
         ripe_hash = hashlib.new('ripemd160')
         ripe_hash.update(sha_hash.digest())
 
-        self.guid = ripe_hash.digest().encode('hex')
-        self.sin = obelisk.EncodeBase58Check('\x0F\x02%s' + ripe_hash.digest())
+        self.guid = ripe_hash.hexdigest()
+        self.sin = obelisk.EncodeBase58Check('\x0F\x02%s' % ripe_hash.digest())
 
         newsettings = {
             "secret": self.secret,
@@ -360,7 +342,7 @@ class CryptoTransportLayer(TransportLayer):
         self.db.updateEntries("settings", newsettings, {"market_id": self.market_id})
         self.settings.update(newsettings)
 
-    def join_network(self, seeds=None, callback=lambda msg: None):
+    def join_network(self, seeds=None, callback=None):
         if seeds is None:
             seeds = []
 
@@ -395,11 +377,8 @@ class CryptoTransportLayer(TransportLayer):
             callback('Joined')
 
     def get_past_peers(self):
-        peers = []
         result = self.db.selectEntries("peers", {"market_id": self.market_id})
-        for peer in result:
-            peers.append(peer['uri'])
-        return peers
+        return [peer['uri'] for peer in result]
 
     def search_for_my_node(self):
         self.log.info('Searching for myself')
@@ -430,7 +409,7 @@ class CryptoTransportLayer(TransportLayer):
             return
 
         # Return signed pubkey
-        pubkey = self.cryptor.pubkey  # XXX: Neither a Cryptor nor ECC has such a field.
+        pubkey = self.cryptor.pubkey  # XXX: A Cryptor does not have such a field.
         ec_key = obelisk.EllipticCurveKey()
         ec_key.set_secret(self.secret)
         digest = obelisk.Hash(pubkey)
@@ -439,7 +418,7 @@ class CryptoTransportLayer(TransportLayer):
         # Send array of nickname, pubkey, signature to transport layer
         self.send(proto_response_pubkey(nickname, pubkey, signature))
 
-    def send(self, data, send_to=None, callback=lambda msg: None):
+    def send(self, data, send_to=None, callback=None):
 
         self.log.debug("Outgoing Data: %s %s", data, send_to)
 
@@ -502,6 +481,14 @@ class CryptoTransportLayer(TransportLayer):
         self.dht.add_peer(self, uri, pubkey, guid, nickname)
         t = Thread(target=self.trigger_callbacks, args=(msg['type'], msg,))
         t.start()
+
+    def store(self, *args, **kwargs):
+        """
+        Store or republish data.
+
+        Refer to the dht module (iterativeStore()) for further details.
+        """
+        self.dht.iterativeStore(*args, **kwargs)
 
     def shutdown(self):
         print "CryptoTransportLayer.shutdown()!"
