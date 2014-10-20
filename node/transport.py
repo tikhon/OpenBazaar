@@ -79,30 +79,6 @@ class TransportLayer(object):
         """
         self.dht.iterativeStore(*args, **kwargs)
 
-    def valid_peer_uri(self, uri):
-        try:
-            [_, self_addr, _] = network_util.uri_parts(self.uri)
-            [other_protocol, other_addr, other_port] = \
-                network_util.uri_parts(uri)
-        except RuntimeError:
-            return False
-
-        if not network_util.is_valid_protocol(other_protocol) \
-                or not network_util.is_valid_port(other_port):
-            return False
-
-        if network_util.is_private_ip_address(self_addr):
-            if not network_util.is_private_ip_address(other_addr):
-                self.log.warning((
-                    'Trying to connect to external '
-                    'network with a private ip address.'
-                ))
-        else:
-            if network_util.is_private_ip_address(other_addr):
-                return False
-
-        return True
-
 
 class CryptoTransportLayer(TransportLayer):
 
@@ -447,18 +423,6 @@ class CryptoTransportLayer(TransportLayer):
             self, uri, pubkey, guid=guid, nickname=nickname
         )
 
-    def get_profile(self):
-        peers = {}
-
-        self.settings = self.db.selectEntries("settings", {"market_id": self.market_id})[0]
-        for uri, peer in self.peers.iteritems():
-            if peer.pub:
-                peers[uri] = peer.pub.encode('hex')
-        return {'uri': self.uri,
-                'pub': self.cryptor.get_pubkey().encode('hex'),
-                'nickname': self.nickname,
-                'peers': peers}
-
     def respond_pubkey_if_mine(self, nickname, ident_pubkey):
 
         if ident_pubkey != self.pubkey:
@@ -474,17 +438,6 @@ class CryptoTransportLayer(TransportLayer):
 
         # Send array of nickname, pubkey, signature to transport layer
         self.send(proto_response_pubkey(nickname, pubkey, signature))
-
-    def create_peer(self, uri, pub, node_guid):
-
-        if pub:
-            pub = pub.decode('hex')
-
-        # Create the peer if public key is not already in the peer list
-        self.peers[uri] = connection.CryptoPeerConnection(self, uri, pub, node_guid)
-
-        # Call 'peer' callbacks on listeners
-        self.trigger_callbacks('peer', self.peers[uri])
 
     def send(self, data, send_to=None, callback=lambda msg: None):
 
