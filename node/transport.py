@@ -21,7 +21,7 @@ import connection
 from crypto_util import Cryptor
 from dht import DHT
 import network_util
-from protocol import hello_request, hello_response, goodbye, proto_response_pubkey
+from protocol import proto_response_pubkey
 
 
 class TransportLayer(object):
@@ -484,25 +484,6 @@ class CryptoTransportLayer(TransportLayer):
                 except Exception:
                     self.log.info("Error sending over peer!")
                     traceback.print_exc()
-
-    def send_enc(self, uri, msg):
-        peer = self.peers[uri]
-        pub = peer.pub
-
-        # Now send a hello message to the peer
-        if pub:
-            self.log.info(
-                "Sending encrypted [%s] message to %s",
-                msg['type'], uri
-            )
-            peer.send(msg)
-        else:
-            # Will send clear profile on initial if no pub
-            self.log.info(
-                "Sending unencrypted [%s] message to %s",
-                msg['type'], uri
-            )
-            self.peers[uri].send_raw(json.dumps(msg))
 
     def _on_message(self, msg):
 
