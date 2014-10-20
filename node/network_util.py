@@ -1,5 +1,3 @@
-import re
-
 from IPy import IP, IPint
 import requests
 from requests.exceptions import RequestException
@@ -51,14 +49,6 @@ def is_valid_protocol(protocol):
 
 def is_private_ip_address(addr):
     return is_loopback_addr(addr) or IP(addr).iptype() != 'PUBLIC'
-
-
-def uri_parts(uri):
-    m = re.match(r"(\w+)://([\w\.]+):(\d+)", uri)
-    if m is not None:
-        return m.group(1), m.group(2), m.group(3)
-    else:
-        raise RuntimeError('URI is not valid')
 
 
 def get_my_ip():
