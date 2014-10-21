@@ -170,9 +170,8 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
     def send(self, data, callback=None):
         assert self.guid, 'Uninitialized own guid'
 
-        if not self.pub:
-            self.log.warn('There is no public key for encryption')
-            return
+        assert hasattr(self, 'guid'), 'Peer Connection is missing GUID'
+        assert self.pub, 'CryptoPeerConnection with uninitialized guid'
 
         # Include sender information and version
         data['guid'] = self.guid
@@ -182,26 +181,24 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
         data['senderNick'] = self.transport.nickname
         data['v'] = constants.VERSION
 
-        self.log.debug('Sending to peer: %s %s', self.ip, pformat(data))
+        # Sign cleartext data
+        sig_data = json.dumps(data).encode('hex')
+        signature = self.sign(sig_data).encode('hex')
 
-        jdata = json.dumps(data)
         try:
-            cipher_data = self.encrypt(jdata)
-            signature = self.sign(jdata)
+            # Encrypt signature and data
+            data = self.encrypt(json.dumps({
+                    'sig': signature,
+                    'data': sig_data
+                }))
         except Exception as e:
             self.log.error('Encryption failed. %s', e)
             return
 
         try:
-            self.send_raw(
-                json.dumps({
-                    'sig': signature.encode('hex'),
-                    'data': cipher_data.encode('hex')
-                }),
-                callback
-            )
+            self.send_raw(data, callback)
         except Exception as e:
-            self.log.error("Was not able to encode empty data: %s", e)
+            self.log.error("Was not able to encode data: %s", e)
 
     def peer_to_tuple(self):
         return self.ip, self.port, self.guid
@@ -211,10 +208,11 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
 
 
 class PeerListener(object):
-    def __init__(self, ip, port, ctx, data_cb):
+    def __init__(self, ip, port, ctx, guid, data_cb):
         self.ip = ip
         self.port = port
         self._data_cb = data_cb
+        self.guid = guid
 
         self.uri = network_util.get_peer_url(self.ip, self.port)
         self.is_listening = False
@@ -300,9 +298,9 @@ class PeerListener(object):
 
 class CryptoPeerListener(PeerListener):
 
-    def __init__(self, ip, port, pubkey, secret, ctx, data_cb):
+    def __init__(self, ip, port, pubkey, secret, ctx, guid, data_cb):
 
-        PeerListener.__init__(self, ip, port, ctx, data_cb)
+        super(CryptoPeerListener, self).__init__(ip, port, ctx, guid, data_cb)
 
         self.pubkey = pubkey
         self.secret = secret
@@ -322,50 +320,92 @@ class CryptoPeerListener(PeerListener):
 
             if msg.get('type') is None:
 
-                data = msg.get('data').decode('hex')
-                sig = msg.get('sig').decode('hex')
+                # Try to decrypt message first
+                cryptor = makePrivCryptor(self.secret)
 
                 try:
-                    cryptor = Cryptor(privkey_hex=self.secret)
+                    decrypted_data = cryptor.decrypt(msg)
+                except RuntimeError:
+                    self.log.error('MAC cannot be verified')
 
-                    try:
-                        data = cryptor.decrypt(data)
-                    except Exception as e:
-                        self.log.info('Exception: %s', e)
+                if 'data' in decrypted_data and 'sig' in decrypted_data:
+                    data = decrypted_data.get('data').decode('hex')
+                    sig = decrypted_data.get('sig').decode('hex')
+                else:
+                    self.log.error('Decrypted data is missing data and/or signature')
+                    return
 
                     self.log.debug('Signature: %s', sig.encode('hex'))
                     self.log.debug('Signed Data: %s', data)
 
-                    # Check signature
-                    data_json = json.loads(data)
-                    cryptor = Cryptor(pubkey_hex=data_json['pubkey'])
-                    if cryptor.verify(sig, data):
-                        self.log.info('Verified')
-                    else:
-                        self.log.error(
-                            'Message signature could not be verified %s', msg
-                        )
+                # Check signature
+                data_json = json.loads(data)
+                sig_cryptor = makePubCryptor(data_json['pubkey'])
 
-                    msg = json.loads(data)
-                    self.log.debug('Message Data %s', msg)
-                except Exception as e:
-                    self.log.error('Could not decrypt message properly %s', e)
+                if sig_cryptor.verify(sig, data_json):
+                    self.log.info('Verified')
+                else:
+                    self.log.error('Message signature could not be verified %s', msg)
+                    return
+
+                msg = json.loads(data)
+                self.log.debug('Message Data %s', msg)
 
         except ValueError:
-            try:
-                msg = self.cryptor.decrypt(serialized)
-                msg = json.loads(msg)
 
-                self.log.info(
-                    "Decrypted Message [%s]",
-                    msg.get('type', 'unknown')
-                )
-            except Exception:
-                self.log.error("Could not decrypt message: %s", msg)
+            # Decrypt Data
+            msg = self._myself.decrypt(serialized)
 
+            # Turn it into a dict
+            msg = json.loads(msg)
+            signature = msg['sig'].decode('hex')
+            sig_data = msg['data']
+            data = json.loads(sig_data.decode('hex'))
+
+            self.log.info(
+                "Decrypted Message [%s]",
+                msg
+            )
+
+            # Check signature
+            if self.validate_signature(signature, sig_data):
+                msg = data
+
+                # Check that recipient is intended
+                self.log.info('Recipient GUID: %s', msg['guid'])
+
+                if msg['guid'] != self.guid:
+                    self.log.error('This message is not intended for your node.')
+                    return
+
+                # Check signature matches sender
+                # TODO: if msg['senderGUID'] !=
+
+            else:
+                self.log.error('Signature does not validate')
                 return
 
+
+        except Exception as e:
+            self.log.error('Could not decrypt message properly %s', e)
+            return
+
         if msg.get('type') is not None:
+            self.log.info('Message [%s]', msg.get('type'))
             self._data_cb(msg)
         else:
             self.log.error('Received a message with no type')
+
+    def validate_signature(self, signature, data):
+
+        data_json = json.loads(data.decode('hex'))
+        print 'Signature In', signature.encode('hex')
+        print 'Data In', data.decode('hex')
+        sig_cryptor = makePubCryptor(data_json['pubkey'])
+
+        if sig_cryptor.verify(signature, data):
+            self.log.info('Verified')
+            return True
+        else:
+            self.log.error('Message signature could not be verified')
+            return False
