@@ -48,8 +48,8 @@ class Market(object):
 
         # Current
         self.transport = transport
-        self.dht = transport.get_dht()
-        self.market_id = transport.get_market_id()
+        self.dht = transport.dht
+        self.market_id = transport.market_id
         self.peers = self.dht.getActivePeers()
         self.db = db
         self.orders = Orders(transport, self.market_id, db)

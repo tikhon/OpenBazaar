@@ -1,29 +1,6 @@
-def hello_request(data):
-    data['type'] = 'hello_request'
-    return data
-
-
-def hello_response(data):
-    data['type'] = 'hello_reply'
-    return data
-
-
-def goodbye(data):
-    data['type'] = 'goodbye'
-    return data
-
-
-def ok():
-    return {'type': 'ok'}
-
-
 def shout(data):
     data['type'] = 'shout'
     return data
-
-
-def proto_welcome():
-    return {'type': 'welcome'}
 
 
 def proto_page(uri, pubkey, guid, text, signature, nickname, PGPPubKey, email,
@@ -48,47 +25,6 @@ def proto_page(uri, pubkey, guid, text, signature, nickname, PGPPubKey, email,
 
 def query_page(guid):
     data = {'type': 'query_page', 'findGUID': guid}
-    return data
-
-
-def order(order_id, buyer, seller, state, text, escrows=None, tx=None):
-    if not escrows:
-        escrows = []
-    data = {
-        'type': 'order',
-        'order_id': order_id,
-        'buyer': buyer.encode('hex'),
-        'seller': seller.encode('hex'),
-        'escrows': escrows
-    }
-    # this is who signs
-    # this is who the review is about
-    # the signature
-    # the signature
-    if data.get('tex'):
-        data['tx'] = tx.encode('hex')
-    # some text
-    data['text'] = text
-    # some text
-    data['address'] = ''
-    data['state'] = state
-    # new -> accepted/rejected -> payed -> sent -> received
-    return data
-
-
-def proto_listing(productTitle, productDescription, productPrice,
-                  productQuantity, market_id, productShippingPrice,
-                  productImageName, productImageData):
-    data = {
-        'productTitle': productTitle,
-        'productDescription': productDescription,
-        'productPrice': productPrice,
-        'productQuantity': productQuantity,
-        'market_id': market_id,
-        'productShippingPrice': productShippingPrice,
-        'productImageName': productImageName,
-        'productImageData': productImageData
-    }
     return data
 
 

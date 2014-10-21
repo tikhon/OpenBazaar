@@ -4,6 +4,7 @@ import json
 import logging
 from pprint import pformat
 import random
+import sys
 from threading import Thread
 import traceback
 from urlparse import urlparse
@@ -21,11 +22,12 @@ import connection
 from crypto_util import Cryptor
 from dht import DHT
 import network_util
-from protocol import hello_request, hello_response, goodbye, proto_response_pubkey
+from protocol import proto_response_pubkey
 
 
 class TransportLayer(object):
-    # Transport layer manages a list of peers
+    """TransportLayer manages a list of peers."""
+
     def __init__(self, ob_ctx, guid, nickname=None):
         self.peers = {}
         self.callbacks = defaultdict(list)
@@ -46,10 +48,6 @@ class TransportLayer(object):
             '[%s] %s' % (ob_ctx.market_id, self.__class__.__name__)
         )
 
-    def start_listener(self):
-        self.listener = connection.PeerListener(self.ip, self.port, self.ctx, self._on_raw_message)
-        self.listener.listen()
-
     def add_callbacks(self, callbacks):
         for section, callback in callbacks:
             self.callbacks[section] = []
@@ -63,8 +61,7 @@ class TransportLayer(object):
             self.callbacks[section].append(callback)
 
     def trigger_callbacks(self, section, *data):
-
-        # Run all callbacks in specified section
+        """Run all callbacks in specified section."""
         for cb in self.callbacks[section]:
             if cb['validator_cb'](*data):
                 cb['cb'](*data)
@@ -75,98 +72,6 @@ class TransportLayer(object):
             for cb in self.callbacks['all']:
                 if cb['validator_cb'](*data):
                     cb['cb'](*data)
-
-    def get_profile(self):
-        return hello_request({'uri': self.uri})
-
-    def _init_peer(self, msg):
-        uri = msg['uri']
-
-        if uri not in self.peers:
-            self.peers[uri] = connection.PeerConnection(self, uri)
-
-    def send(self, data, send_to=None, callback=lambda msg: None):
-
-        self.log.info("Outgoing Data: %s %s", data, send_to)
-        data['senderNick'] = self.nickname
-
-        # Directed message
-        if send_to is not None:
-            peer = self.dht.routingTable.getContact(send_to)
-            peer.send(data, callback=callback)
-            return
-
-        else:
-            # FindKey and then send
-
-            for peer in self.dht.activePeers:
-                try:
-                    data['senderGUID'] = self.guid
-                    data['pubkey'] = self.pubkey
-
-                    def cb(msg):
-                        print msg
-                    peer.send(data, cb)
-
-                except Exception:
-                    self.log.info("Error sending over peer!")
-                    traceback.print_exc()
-
-    def store(self, *args, **kwargs):
-        """
-        Store or republish data.
-
-        Refer to the dht module (iterativeStore()) for further details.
-        """
-        self.dht.iterativeStore(*args, **kwargs)
-
-    def broadcast_goodbye(self):
-        self.log.info("Broadcast goodbye")
-        msg = goodbye({'uri': self.uri})
-        self.send(msg)
-
-    def _on_message(self, msg):
-
-        # here goes the application callbacks
-        # we get a "clean" msg which is a dict holding whatever
-        self.log.info("[On Message] Data received: %s", msg)
-
-        if msg['type'] != 'ok':
-            self.trigger_callbacks(msg['type'], msg)
-
-    def _on_raw_message(self, msg):
-        msg_type = msg.get('type')
-        if msg_type == 'hello_request' and msg.get('uri'):
-            self._init_peer(msg)
-        else:
-            self._on_message(msg)
-
-    def valid_peer_uri(self, uri):
-        try:
-            [_, self_addr, _] = network_util.uri_parts(self.uri)
-            [other_protocol, other_addr, other_port] = \
-                network_util.uri_parts(uri)
-        except RuntimeError:
-            return False
-
-        if not network_util.is_valid_protocol(other_protocol) \
-                or not network_util.is_valid_port(other_port):
-            return False
-
-        if network_util.is_private_ip_address(self_addr):
-            if not network_util.is_private_ip_address(other_addr):
-                self.log.warning((
-                    'Trying to connect to external '
-                    'network with a private ip address.'
-                ))
-        else:
-            if network_util.is_private_ip_address(other_addr):
-                return False
-
-        return True
-
-    def shutdown(self):
-        raise NotImplementedError
 
 
 class CryptoTransportLayer(TransportLayer):
@@ -202,22 +107,16 @@ class CryptoTransportLayer(TransportLayer):
             'store'
         )
 
-        # Set up
         self._setup_settings()
-
         ob_ctx.market_id = self.market_id
-
         self.dht = DHT(self, self.market_id, self.settings, self.db)
-
         TransportLayer.__init__(self, ob_ctx, self.guid, self.nickname)
-
         self.start_listener()
 
         if ob_ctx.enable_ip_checker and not ob_ctx.seed_mode and not ob_ctx.dev_mode:
             self.start_ip_address_checker()
 
     def start_listener(self):
-
         self.add_callbacks([
             (
                 msg,
@@ -308,12 +207,6 @@ class CryptoTransportLayer(TransportLayer):
             self.bitmessage_api = None
         return result
 
-    def get_dht(self):
-        return self.dht
-
-    def get_market_id(self):
-        return self.market_id
-
     def validate_on_hello(self, msg):
         self.log.debug('Validating ping message.')
         return True
@@ -356,7 +249,7 @@ class CryptoTransportLayer(TransportLayer):
             self.settings = self.settings[0]
 
         # Generate PGP key during initial setup or if previous PGP gen failed
-        if not ('PGPPubKey' in self.settings and self.settings["PGPPubKey"]):
+        if not self.settings.get('PGPPubKey'):
             try:
                 self.log.info('Generating PGP keypair. This may take several minutes...')
                 print 'Generating PGP keypair. This may take several minutes...'
@@ -377,28 +270,27 @@ class CryptoTransportLayer(TransportLayer):
 
                 self.log.info('PGP keypair generated.')
             except Exception as e:
-                self.log.error("Encountered a problem with GPG: %s", e)
-                raise SystemExit("Encountered a problem with GPG: %s" % e)
+                sys.exit("Encountered a problem with GPG: %s" % e)
 
-        if not ('pubkey' in self.settings and self.settings['pubkey']):
+        if not self.settings.get('pubkey'):
             # Generate Bitcoin keypair
             self._generate_new_keypair()
 
-        if not ('nickname' in self.settings and self.settings['nickname']):
+        if not self.settings.get('nickname'):
             newsettings = {'nickname': 'Default'}
             self.db.updateEntries('settings', newsettings, {"market_id": self.market_id})
             self.settings.update(newsettings)
 
-        self.nickname = self.settings['nickname'] if 'nickname' in self.settings else ""
-        self.secret = self.settings['secret'] if 'secret' in self.settings else ""
-        self.pubkey = self.settings['pubkey'] if 'pubkey' in self.settings else ""
+        self.nickname = self.settings.get('nickname', '')
+        self.secret = self.settings.get('secret', '')
+        self.pubkey = self.settings.get('pubkey', '')
         self.privkey = self.settings.get('privkey')
         self.btc_pubkey = privkey_to_pubkey(self.privkey)
-        self.guid = self.settings['guid'] if 'guid' in self.settings else ""
-        self.sin = self.settings['sin'] if 'sin' in self.settings else ""
-        self.bitmessage = self.settings['bitmessage'] if 'bitmessage' in self.settings else ""
+        self.guid = self.settings.get('guid', '')
+        self.sin = self.settings.get('sin', '')
+        self.bitmessage = self.settings.get('bitmessage', '')
 
-        if not ('bitmessage' in self.settings and self.settings['bitmessage']):
+        if not self.settings.get('bitmessage'):
             # Generate Bitmessage address
             if self.bitmessage_api is not None:
                 self._generate_new_bitmessage_address()
@@ -425,8 +317,8 @@ class CryptoTransportLayer(TransportLayer):
         ripe_hash = hashlib.new('ripemd160')
         ripe_hash.update(sha_hash.digest())
 
-        self.guid = ripe_hash.digest().encode('hex')
-        self.sin = obelisk.EncodeBase58Check('\x0F\x02%s' + ripe_hash.digest())
+        self.guid = ripe_hash.hexdigest()
+        self.sin = obelisk.EncodeBase58Check('\x0F\x02%s' % ripe_hash.digest())
 
         newsettings = {
             "secret": self.secret,
@@ -450,7 +342,7 @@ class CryptoTransportLayer(TransportLayer):
         self.db.updateEntries("settings", newsettings, {"market_id": self.market_id})
         self.settings.update(newsettings)
 
-    def join_network(self, seeds=None, callback=lambda msg: None):
+    def join_network(self, seeds=None, callback=None):
         if seeds is None:
             seeds = []
 
@@ -485,11 +377,8 @@ class CryptoTransportLayer(TransportLayer):
             callback('Joined')
 
     def get_past_peers(self):
-        peers = []
         result = self.db.selectEntries("peers", {"market_id": self.market_id})
-        for peer in result:
-            peers.append(peer['uri'])
-        return peers
+        return [peer['uri'] for peer in result]
 
     def search_for_my_node(self):
         self.log.info('Searching for myself')
@@ -513,18 +402,6 @@ class CryptoTransportLayer(TransportLayer):
             self, uri, pubkey, guid=guid, nickname=nickname
         )
 
-    def get_profile(self):
-        peers = {}
-
-        self.settings = self.db.selectEntries("settings", {"market_id": self.market_id})[0]
-        for uri, peer in self.peers.iteritems():
-            if peer.pub:
-                peers[uri] = peer.pub.encode('hex')
-        return {'uri': self.uri,
-                'pub': self.cryptor.get_pubkey().encode('hex'),
-                'nickname': self.nickname,
-                'peers': peers}
-
     def respond_pubkey_if_mine(self, nickname, ident_pubkey):
 
         if ident_pubkey != self.pubkey:
@@ -532,7 +409,7 @@ class CryptoTransportLayer(TransportLayer):
             return
 
         # Return signed pubkey
-        pubkey = self.cryptor.pubkey  # XXX: Neither a Cryptor nor ECC has such a field.
+        pubkey = self.cryptor.pubkey  # XXX: A Cryptor does not have such a field.
         ec_key = obelisk.EllipticCurveKey()
         ec_key.set_secret(self.secret)
         digest = obelisk.Hash(pubkey)
@@ -541,30 +418,7 @@ class CryptoTransportLayer(TransportLayer):
         # Send array of nickname, pubkey, signature to transport layer
         self.send(proto_response_pubkey(nickname, pubkey, signature))
 
-    def pubkey_exists(self, pub):
-
-        for peer in self.peers.itervalues():
-            self.log.info(
-                'PEER: %s Pub: %s',
-                peer.pub.encode('hex'), pub.encode('hex')
-            )
-            if peer.pub.encode('hex') == pub.encode('hex'):
-                return True
-
-        return False
-
-    def create_peer(self, uri, pub, node_guid):
-
-        if pub:
-            pub = pub.decode('hex')
-
-        # Create the peer if public key is not already in the peer list
-        self.peers[uri] = connection.CryptoPeerConnection(self, uri, pub, node_guid)
-
-        # Call 'peer' callbacks on listeners
-        self.trigger_callbacks('peer', self.peers[uri])
-
-    def send(self, data, send_to=None, callback=lambda msg: None):
+    def send(self, data, send_to=None, callback=None):
 
         self.log.debug("Outgoing Data: %s %s", data, send_to)
 
@@ -610,67 +464,6 @@ class CryptoTransportLayer(TransportLayer):
                     self.log.info("Error sending over peer!")
                     traceback.print_exc()
 
-    def send_enc(self, uri, msg):
-        peer = self.peers[uri]
-        pub = peer.pub
-
-        # Now send a hello message to the peer
-        if pub:
-            self.log.info(
-                "Sending encrypted [%s] message to %s",
-                msg['type'], uri
-            )
-            peer.send(msg)
-        else:
-            # Will send clear profile on initial if no pub
-            self.log.info(
-                "Sending unencrypted [%s] message to %s",
-                msg['type'], uri
-            )
-            self.peers[uri].send_raw(json.dumps(msg))
-
-    def _init_peer(self, msg):
-
-        uri = msg['uri']
-        pub = msg.get('pub')
-        nickname = msg.get('nickname')
-        msg_type = msg.get('type')
-        guid = msg['guid']
-
-        if not self.valid_peer_uri(uri):
-            self.log.error("Invalid Peer: %s", uri)
-            return
-
-        if uri not in self.peers:
-            # Unknown peer
-            self.log.info('Add New Peer: %s', uri)
-            self.create_peer(uri, pub, guid)
-
-            if not msg_type:
-                self.send_enc(uri, hello_request(self.get_profile()))
-            elif msg_type == 'hello_request':
-                self.send_enc(uri, hello_response(self.get_profile()))
-
-        else:
-            # Known peer
-            if pub:
-                # test if we have to update the pubkey
-                if not self.peers[uri].pub:
-                    self.log.info("Setting public key for seed node")
-                    self.peers[uri].pub = pub.decode('hex')
-                    self.trigger_callbacks('peer', self.peers[uri])
-
-                if self.peers[uri].pub != pub.decode('hex'):
-                    self.log.info("Updating public key for node")
-                    self.peers[uri].nickname = nickname
-                    self.peers[uri].pub = pub.decode('hex')
-
-                    self.trigger_callbacks('peer', self.peers[uri])
-
-            if msg_type == 'hello_request':
-                # reply only if necessary
-                self.send_enc(uri, hello_response(self.get_profile()))
-
     def _on_message(self, msg):
 
         # here goes the application callbacks
@@ -688,6 +481,14 @@ class CryptoTransportLayer(TransportLayer):
         self.dht.add_peer(self, uri, pubkey, guid, nickname)
         t = Thread(target=self.trigger_callbacks, args=(msg['type'], msg,))
         t.start()
+
+    def store(self, *args, **kwargs):
+        """
+        Store or republish data.
+
+        Refer to the dht module (iterativeStore()) for further details.
+        """
+        self.dht.iterativeStore(*args, **kwargs)
 
     def shutdown(self):
         print "CryptoTransportLayer.shutdown()!"

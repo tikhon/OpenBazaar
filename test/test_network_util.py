@@ -33,19 +33,6 @@ class TestNodeNetworkUtil(unittest.TestCase):
 
         self.assertFalse(network_util.is_private_ip_address('8.8.8.8'))
 
-    def test_uri_parts(self):
-        self.assertEqual(
-            ('tcp', 'localhost', '1234'),
-            network_util.uri_parts('tcp://localhost:1234')
-        )
-
-        self.assertEqual(
-            ('tcp', '1.1.1.1', '22'),
-            network_util.uri_parts('tcp://1.1.1.1:22')
-        )
-
-        with self.assertRaises(RuntimeError):
-            network_util.uri_parts('tcp://::1234')
 
 if __name__ == '__main__':
     unittest.main()
