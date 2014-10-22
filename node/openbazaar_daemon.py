@@ -331,6 +331,7 @@ def log_openbazaar_start(log, ob_ctx):
     print "Started OpenBazaar Web App at http://%s:%s" % \
           (ob_ctx.http_ip, ob_ctx.http_port)
 
+
 def attempt_browser_open(ob_ctx):
     if not ob_ctx.disable_open_browser:
         open_default_webbrowser(
