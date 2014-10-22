@@ -129,6 +129,7 @@ class CryptoTransportLayer(TransportLayer):
 
         self.listener = connection.CryptoPeerListener(
             self.ip, self.port, self.pubkey, self.secret, self.ctx,
+            self.guid,
             self._on_message
         )
 
