@@ -37,10 +37,10 @@ class TestNodeNetworkUtil(unittest.TestCase):
 
     def test_is_valid_port(self):
         self.assertTrue(network_util.is_valid_port(1))
-        self.assertTrue(network_util.is_valid_port(65335))
+        self.assertTrue(network_util.is_valid_port(2**16 - 1))
 
-        self.assertFalse(network_util.is_valid_port(-1))
-        self.assertFalse(network_util.is_valid_port(70000))
+        self.assertFalse(network_util.is_valid_port(0))
+        self.assertFalse(network_util.is_valid_port(2**16))
 
     def test_is_valid_protocol(self):
         self.assertTrue(network_util.is_valid_protocol('tcp'))
@@ -56,6 +56,32 @@ class TestNodeNetworkUtil(unittest.TestCase):
         self.assertTrue(network_util.is_private_ip_address('10.1.1.1'))
 
         self.assertFalse(network_util.is_private_ip_address('8.8.8.8'))
+
+    def test_is_ipv6_address(self):
+        self.assertTrue(network_util.is_ipv6_address('2a00::'))
+        self.assertFalse(network_util.is_ipv6_address('8.8.8.8'))
+
+    def test_get_peer_url(self):
+        self.assertEqual(
+            network_util.get_peer_url('8.8.8.8', 1234),
+            'tcp://8.8.8.8:1234'
+        )
+        self.assertEqual(
+            network_util.get_peer_url('8.8.8.8', 1234, protocol='udp'),
+            'udp://8.8.8.8:1234'
+        )
+        self.assertEqual(
+            network_util.get_peer_url('2a00::', 1234),
+            'tcp://[2a00::]:1234'
+        )
+        self.assertEqual(
+            network_util.get_peer_url('2a00::', 1234, protocol='udp'),
+            'udp://[2a00::]:1234'
+        )
+        self.assertEqual(
+            network_util.get_peer_url('www.openbazaar.com', 1234),
+            'tcp://www.openbazaar.com:1234'
+        )
 
 
 if __name__ == '__main__':
