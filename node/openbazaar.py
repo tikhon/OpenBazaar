@@ -205,9 +205,10 @@ def create_openbazaar_contexts(arguments, nat_status):
     # annoy you." -Gubatron :)
 
     # market port
-    server_port = defaults['server_port']
-    if arguments.server_port != server_port:
-        server_port = arguments.server_port
+    server_public_port = defaults['SERVER_PORT']
+    if arguments.server_public_port is not None and\
+       arguments.server_public_port != server_public_port:
+        server_public_port = arguments.server_public_port
     elif nat_status is not None:
         # override the port for p2p communications with the one
         # obtained from the STUN server.
@@ -217,8 +218,21 @@ def create_openbazaar_contexts(arguments, nat_status):
     if not os.path.exists(defaults['log_dir']):
         os.makedirs(defaults['log_dir'], 0755)
 
-    log_path = os.path.join(defaults['log_dir'], defaults['log_file'])
-    if arguments.log != log_path:
+    # http port
+    http_port = defaults['HTTP_PORT']
+    if arguments.http_port is not None and arguments.http_port != http_port:
+        http_port = arguments.http_port
+
+    # log path (requires LOG_DIR to exist)
+    if not os.path.exists(defaults['LOG_DIR']):
+        os.makedirs(defaults['LOG_DIR'], 0755)
+
+    if arguments.development_mode:
+        log_file = defaults['DEV_LOG_FILE']
+    else:
+        log_file = defaults['LOG_FILE']
+    log_path = os.path.join(defaults['LOG_DIR'], log_file)
+    if not arguments.development_mode and arguments.log is not None and arguments.log != log_path:
         log_path = arguments.log
 
     # db path
@@ -263,14 +277,8 @@ def create_openbazaar_contexts(arguments, nat_status):
             db_dev_filename = defaults['dev_db_file'].format(i)
             db_path = os.path.join(db_dirname, db_dev_filename)
 
-            seed_mode = False
-
-            if arguments.seeds == defaults['seeds']:
-                seeds = [defaults['server_ip']]
-
-            if i == 0:
-                seed_mode = True
-                seeds = []
+            if i is not 1:
+                seed_peers = ['localhost']
 
             ob_ctxs.append(OpenBazaarContext(nat_status,
                                              server_ip,
@@ -314,8 +322,8 @@ def ensure_database_setup(ob_ctx, defaults):
     if not os.path.exists(db_path):
         # setup the database if file not there.
         print "[openbazaar] bootstrapping database ", os.path.basename(db_path)
-        setup_db.setup_db(db_path, ob_ctx.disable_sqlite_crypt)
-        print "[openbazaar] database setup completed"
+        setup_db(db_path, ob_ctx.disable_sqlite_crypt)
+        print "[openbazaar] database setup completed\n"
 
 
 def start(arguments):

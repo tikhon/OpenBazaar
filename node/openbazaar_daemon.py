@@ -127,6 +127,7 @@ class OpenBazaarContext(object):
                 'server_port': 12345,
                 'log_dir': 'logs',
                 'log_file': 'production.log',
+                'dev_log_file': 'development.log',
                 'db_dir': 'db',
                 'db_file': 'ob.db',
                 'dev_db_file': 'ob-dev-{0}.db',
@@ -329,7 +330,6 @@ def log_openbazaar_start(log, ob_ctx):
                 (ob_ctx.http_ip, ob_ctx.http_port))
     print "Started OpenBazaar Web App at http://%s:%s" % \
           (ob_ctx.http_ip, ob_ctx.http_port)
-
 
 def attempt_browser_open(ob_ctx):
     if not ob_ctx.disable_open_browser:
