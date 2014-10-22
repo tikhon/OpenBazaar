@@ -299,13 +299,8 @@ def start_io_loop():
 def create_logger(ob_ctx):
     logger = None
     try:
-        logging.basicConfig(
-            level=int(ob_ctx.log_level),
-            format=u'%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            filename=ob_ctx.log_path
-        )
-        logging._defaultFormatter = logging.Formatter(u'%(message)s')
-        logger = logging.getLogger('[%s] %s' % (ob_ctx.market_id, 'root'))
+        logger = logging.getLogger()
+        logger.setLevel(int(ob_ctx.log_level))
 
         handler = logging.handlers.RotatingFileHandler(
             ob_ctx.log_path,
@@ -313,6 +308,9 @@ def create_logger(ob_ctx):
             maxBytes=50000000,
             backupCount=1
         )
+        logFormat = logging.Formatter(
+            u'%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(logFormat)
         logger.addHandler(handler)
     except Exception as e:
         print "Could not setup logger, continuing: ", e.message
