@@ -354,7 +354,7 @@ class CryptoPeerListener(PeerListener):
         except ValueError:
 
             # Decrypt Data
-            msg = self._myself.decrypt(serialized)
+            msg = self.cryptor.decrypt(serialized)
 
             # Turn it into a dict
             msg = json.loads(msg)
@@ -385,7 +385,6 @@ class CryptoPeerListener(PeerListener):
                 self.log.error('Signature does not validate')
                 return
 
-
         except Exception as e:
             self.log.error('Could not decrypt message properly %s', e)
             return
@@ -401,7 +400,7 @@ class CryptoPeerListener(PeerListener):
         data_json = json.loads(data.decode('hex'))
         print 'Signature In', signature.encode('hex')
         print 'Data In', data.decode('hex')
-        sig_cryptor = makePubCryptor(data_json['pubkey'])
+        sig_cryptor = Cryptor(pubkey_hex=data_json['pubkey'])
 
         if sig_cryptor.verify(signature, data):
             self.log.info('Verified')
