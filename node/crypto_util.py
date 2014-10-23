@@ -1,5 +1,5 @@
 import pyelliptic as ec
-from pybitcointools import main as arithmetic
+from bitcoin import main as arithmetic
 
 BTC_CURVE = 'secp256k1'
 BTC_CURVE_OPENSSL_ID_HEX = '{:0>4x}'.format(ec.OpenSSL.get_curve(BTC_CURVE))

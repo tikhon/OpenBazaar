@@ -8,11 +8,7 @@ import qrcode
 import random
 import time
 import urllib
-from pybitcointools import (
-    mk_multisig_script,
-    privkey_to_pubkey,
-    scriptaddr
-)
+from bitcoin import mk_multisig_script, privkey_to_pubkey, scriptaddr
 
 from decimal import Decimal
 import trust
