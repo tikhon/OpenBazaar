@@ -218,11 +218,6 @@ def create_openbazaar_contexts(arguments, nat_status):
     if not os.path.exists(defaults['log_dir']):
         os.makedirs(defaults['log_dir'], 0755)
 
-    # http port
-    http_port = defaults['http_port']
-    if arguments.http_port is not None and arguments.http_port != http_port:
-        http_port = arguments.http_port
-
     # log path (requires LOG_DIR to exist)
     if not os.path.exists(defaults['log_dir']):
         os.makedirs(defaults['log_dir'], 0755)
@@ -232,7 +227,7 @@ def create_openbazaar_contexts(arguments, nat_status):
     else:
         log_file = defaults['log_file']
     log_path = os.path.join(defaults['log_dir'], log_file)
-    if not arguments.dev_mode and arguments.log is not None and arguments.log != log_path:
+    if not arguments.dev_mode and arguments.log != log_path:
         log_path = arguments.log
 
     # db path
@@ -277,7 +272,7 @@ def create_openbazaar_contexts(arguments, nat_status):
             db_dev_filename = defaults['dev_db_file'].format(i)
             db_path = os.path.join(db_dirname, db_dev_filename)
 
-            if i is not 0:
+            if i:
                 seed_mode = False
                 seeds = ['localhost']
             else:
