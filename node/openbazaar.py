@@ -226,9 +226,6 @@ def create_openbazaar_contexts(arguments, nat_status):
         log_file = defaults['dev_log_file']
     else:
         log_file = defaults['log_file']
-    log_path = os.path.join(defaults['log_dir'], log_file)
-    if not arguments.dev_mode and arguments.log != log_path:
-        log_path = arguments.log
 
     # db path
     if not os.path.exists(defaults['db_dir']):
@@ -241,6 +238,11 @@ def create_openbazaar_contexts(arguments, nat_status):
     ob_ctxs = []
 
     if not arguments.dev_mode:
+
+        log_path = os.path.join(defaults['log_dir'], log_file)
+        if arguments.log != log_path:
+            log_path = arguments.log
+
         # we return a list of a single element, a production node.
         ob_ctxs.append(OpenBazaarContext(nat_status,
                                          server_ip,
@@ -271,6 +273,9 @@ def create_openbazaar_contexts(arguments, nat_status):
         for i in range(arguments.dev_nodes):
             db_dev_filename = defaults['dev_db_file'].format(i)
             db_path = os.path.join(db_dirname, db_dev_filename)
+
+            dev_log_file = log_file.format(i)
+            log_path = os.path.join(defaults['log_dir'], dev_log_file)
 
             if i:
                 seed_mode = False
