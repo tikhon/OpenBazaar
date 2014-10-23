@@ -119,7 +119,7 @@ function installUbuntu {
 
   sudo apt-get update
   sudo apt-get install python-pip build-essential python-zmq rng-tools
-  sudo apt-get install python-dev g++ libjpeg-dev zlib1g-dev sqlite3 openssl
+  sudo apt-get install python-dev g++ libjpeg-dev sqlite3 openssl
   sudo apt-get install alien libssl-dev python-virtualenv lintian libjs-jquery
 
   if [ ! -d "./env" ]; then
@@ -138,7 +138,7 @@ function installArch {
   sudo pacman -Sy
   # sudo pacman -S --needed base-devel
   # Can conflict with multilib packages. Uncomment this line if you don't already have base-devel installed
-  sudo pacman -S --needed python2 python2-pip python2-virtualenv python2-pyzmq rng-tools libjpeg zlib sqlite3 openssl
+  sudo pacman -S --needed python2 python2-pip python2-virtualenv python2-pyzmq rng-tools libjpeg sqlite3 openssl
 
   if [ ! -d "./env" ]; then
     virtualenv2 env
@@ -162,7 +162,7 @@ function confirm {
 function installRaspiArch {
   # pacman -S sudo
   sudo pacman -Sy
-  sudo pacman -S --needed base-devel curl wget python2 python2-pip rng-tools libjpeg zlib sqlite3 openssl libunistring
+  sudo pacman -S --needed base-devel curl wget python2 python2-pip rng-tools libjpeg sqlite3 openssl libunistring
   echo " "
   echo "Notice : pip install requires 10~30 minutes to complete."
   if confirm ; then
@@ -178,7 +178,7 @@ function installRaspiArch {
 
 function installRaspbian {
   sudo apt-get -y install python-pip build-essential rng-tools alien
-  sudo apt-get -y install openssl libssl-dev gcc python-dev libjpeg-dev zlib1g-dev sqlite3
+  sudo apt-get -y install openssl libssl-dev gcc python-dev libjpeg-dev sqlite3
   echo " "
   echo "Notice : pip install requires 2~3 hours to complete."
   if confirm ; then
@@ -196,7 +196,7 @@ function installPortage {
   # print commands
   set -x
 
-  sudo emerge -an dev-lang/python:2.7 dev-python/pip pyzmq rng-tools gcc jpeg sys-libs/zlib sqlite3 openssl dev-python/virtualenv
+  sudo emerge -an dev-lang/python:2.7 dev-python/pip pyzmq rng-tools gcc jpeg sqlite3 openssl dev-python/virtualenv
   # FIXME: on gentoo install as user, because otherwise
   # /usr/lib/python-exec/python-exec* gets overwritten by nose,
   # killing most Python programs.
@@ -212,7 +212,7 @@ function installFedora {
 
   sudo yum -y install python-pip python-zmq rng-tools openssl \
   openssl-devel alien python-virtualenv make automake gcc gcc-c++ \
-  kernel-devel python-devel openjpeg-devel zlib-devel sqlite \
+  kernel-devel python-devel openjpeg-devel sqlite \
    zeromq-devel zeromq python python-qt4 openssl-compat-bitcoin-libs
 
   if [ ! -d "./env" ]; then
