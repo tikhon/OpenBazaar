@@ -1,6 +1,6 @@
 import obelisk
 import logging
-import pybitcointools
+import bitcoin
 from threading import Thread
 
 _log = logging.getLogger('trust')
@@ -42,8 +42,7 @@ def get_unspent(addr, callback):
     _log.debug('get_unspent call')
 
     def get_history():
-
-        history = pybitcointools.history(addr)
+        history = bitcoin.history(addr)
         total = 0
 
         for tx in history:

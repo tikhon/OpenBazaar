@@ -1,6 +1,6 @@
 import unittest
 
-from pybitcointools import main as arithmetic
+from bitcoin import main as arithmetic
 
 from node import crypto_util
 

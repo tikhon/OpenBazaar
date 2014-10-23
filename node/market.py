@@ -13,7 +13,7 @@ from StringIO import StringIO
 from threading import Thread
 import traceback
 
-from pybitcointools.main import privkey_to_pubkey
+from bitcoin.main import privkey_to_pubkey
 import tornado
 
 import constants

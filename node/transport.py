@@ -12,7 +12,7 @@ import xmlrpclib
 
 import gnupg
 import obelisk
-from pybitcointools.main import privkey_to_pubkey, privtopub, random_key
+from bitcoin.main import privkey_to_pubkey, random_key
 from pysqlcipher.dbapi2 import OperationalError, DatabaseError
 import zmq
 from zmq.eventloop import ioloop
@@ -306,9 +306,9 @@ class CryptoTransportLayer(TransportLayer):
     def _generate_new_keypair(self):
         secret = str(random.randrange(2 ** 256))
         self.secret = hashlib.sha256(secret).hexdigest()
-        self.pubkey = privtopub(self.secret)
+        self.pubkey = privkey_to_pubkey(self.secret)
         self.privkey = random_key()
-        self.btc_pubkey = privtopub(self.privkey)
+        self.btc_pubkey = privkey_to_pubkey(self.privkey)
         print 'PUBLIC KEY: ', self.btc_pubkey
 
         # Generate SIN

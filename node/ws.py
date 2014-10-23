@@ -7,7 +7,7 @@ import gnupg
 import obelisk
 import json
 import random
-from pybitcointools import (
+from bitcoin import (
     apply_multisignatures,
     eligius_pushtx,
     mk_multisig_script,
