@@ -495,7 +495,8 @@ class CryptoTransportLayer(TransportLayer):
         print "Notice: explicit DHT Shutdown not implemented."
 
         try:
-            self.bitmessage_api.close()
+            if self.bitmessage_api is not None:
+                self.bitmessage_api.close()
         except Exception as e:
             # It might not even be open; we can't do much more on our
             # way out if exception is thrown here.
