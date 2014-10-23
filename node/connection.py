@@ -4,7 +4,6 @@ import logging
 import platform
 from pprint import pformat
 from urlparse import urlparse
-import zlib
 
 import obelisk
 import zmq
