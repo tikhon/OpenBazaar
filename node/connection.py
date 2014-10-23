@@ -310,8 +310,13 @@ class CryptoPeerListener(PeerListener):
         self.cryptor = Cryptor(pubkey_hex=self.pubkey, privkey_hex=self.secret)
 
     def _on_raw_message(self, serialized):
-        if 'type' not in serialized:
 
+        try:
+            msg = json.loads(serialized)
+
+        except ValueError:
+
+            # Data was not cleartext JSON, perhaps encrypted?
             try:
                 msg = self.cryptor.decrypt(serialized)
 
@@ -346,9 +351,6 @@ class CryptoPeerListener(PeerListener):
             except Exception as e:
                 self.log.error('Could not decrypt message properly %s', e)
                 return
-        else:
-            msg = json.loads(serialized)
-            self.log.info("Message Received [%s]", msg.get('type', 'unknown'))
 
         if 'type' in msg:
             self.log.info('Message [%s]', msg.get('type'))
