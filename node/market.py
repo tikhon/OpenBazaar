@@ -212,7 +212,6 @@ class Market(object):
         if 'item_images' in msg['Contract']:
             if 'image1' in msg['Contract']['item_images']:
                 img = msg['Contract']['item_images']['image1']
-                self.log.debug("Contract Image %s", img)
                 new_uri = self.process_contract_image(img)
                 msg['Contract']['item_images'] = new_uri
         else:
