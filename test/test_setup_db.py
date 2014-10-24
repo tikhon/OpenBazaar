@@ -25,6 +25,5 @@ class TestSetupDB(unittest.TestCase):
         _, self.db_path = tempfile.mkstemp(suffix='.db')
         setup_db.setup_db(self.db_path, disable_sqlite_crypt=True)
 
-
 if __name__ == '__main__':
     unittest.main()
