@@ -121,7 +121,7 @@ openbazaar [options] <command>
         Log file path (default 'logs/production.log')
 
     --log-level <level>
-        Log verbosity level (default: 10 - DEBUG)
+        Log verbosity level (default: 30 - WARNING)
         Expected <level> values are:
            0 - NOT SET
           10 - DEBUG
