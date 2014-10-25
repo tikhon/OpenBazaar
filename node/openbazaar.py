@@ -124,6 +124,7 @@ openbazaar [options] <command>
         Log verbosity level (default: 30 - WARNING)
         Expected <level> values are:
            0 - NOT SET
+           5 - DATADUMP
           10 - DEBUG
           20 - INFO
           30 - WARNING

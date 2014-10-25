@@ -1038,7 +1038,7 @@ class ProtocolHandler(object):
             "id": random.randint(0, 1000000),
             "result": result
         }
-        self.log.debug('SENDING TO CLIENT %s', result)
+        self.log.datadump('Sending to web client: %s', result)
         if error:
             response["error"] = error
         self.handler.queue_response(response)
