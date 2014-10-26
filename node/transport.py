@@ -7,7 +7,6 @@ import random
 import sys
 from threading import Thread
 import traceback
-from urlparse import urlparse
 import xmlrpclib
 
 import gnupg
@@ -471,12 +470,9 @@ class CryptoTransportLayer(TransportLayer):
 
         pubkey = msg.get('pubkey')
         uri = msg.get('uri')
-        ip = urlparse(uri).hostname
-        port = urlparse(uri).port
         guid = msg.get('senderGUID')
         nickname = msg.get('senderNick')[:120]
 
-        self.dht.add_known_node((ip, port, guid, nickname))
         self.log.info('On Message: %s', json.dumps(msg, ensure_ascii=False))
         self.dht.add_peer(self, uri, pubkey, guid, nickname)
         t = Thread(target=self.trigger_callbacks, args=(msg['type'], msg,))
