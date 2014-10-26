@@ -63,29 +63,22 @@ function installMac {
     brew prune
   fi
 
-  # install gpg/sqlite3/python/wget if they aren't installed
-  for dep in gpg sqlite3 python wget
+  # install gpg/sqlite3/python/wget/openssl/zmq if they aren't installed
+  for dep in gpg sqlite3 python wget openssl zmq
   do
     if ! command_exists $dep ; then
       brew install $dep
     fi
   done
 
-  # more brew prerequisites
-  brew install openssl zmq
-
-  # python prerequisites
-  EASY_INSTALL="./env/bin/easy_install"
-  PIP="./env/bin/pip"
-
   # install pip if it is not installed
-  if ! command_exists $PIP ; then
-    $EASY_INSTALL pip
+  if ! command_exists pip ; then
+    easy_install pip
   fi
 
   # install python's virtualenv if it is not installed
   if ! command_exists virtualenv ; then
-    $PIP install virtualenv
+    pip install virtualenv
   fi
 
   # create a virtualenv for OpenBazaar
