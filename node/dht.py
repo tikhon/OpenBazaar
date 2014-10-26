@@ -46,7 +46,7 @@ class DHT(object):
         """
         ip = seed_peer.ip
         port = seed_peer.port
-        self.add_known_node(('tcp://%s:%s' % (ip, port), seed_peer.guid, seed_peer.nickname))
+        self._add_known_node(('tcp://%s:%s' % (ip, port), seed_peer.guid, seed_peer.nickname))
 
         self.log.debug('Starting Seed Peer: %s', seed_peer.nickname)
         self.add_peer(self.transport,
@@ -128,7 +128,7 @@ class DHT(object):
             self.log.debug("This peer is already known and up to date")
             return
         else:
-            self.add_known_node(peer_tuple)
+            self._add_known_node(peer_tuple)
 
         self.log.info(
             'New peer seen; starting handshake - %s %s %s',
@@ -144,7 +144,7 @@ class DHT(object):
         t = Thread(target=new_peer.start_handshake, args=(cb,))
         t.start()
 
-    def add_known_node(self, node):
+    def _add_known_node(self, node):
         """ Accept a peer tuple and add it to known nodes list
         :param node: (tuple)
         :return: N/A
