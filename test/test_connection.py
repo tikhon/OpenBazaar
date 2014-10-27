@@ -3,6 +3,7 @@ import unittest
 import mock
 
 from node import connection, guid
+import json
 
 
 class TestPeerConnection(unittest.TestCase):
@@ -152,13 +153,13 @@ class TestCryptoPeerConnection(TestPeerConnection):
 
     def test_is_handshake(self):
 
-        real_handshake_dict = {
+        real_handshake_dict = json.dumps({
             'type': 'ok'
-        }
+        })
         fake_handshake_encrypted = "safjklawejfwoijsicjewiocjo"
-        fake_handshake_no_type = {
+        fake_handshake_no_type = json.dumps({
             'notype': 'ok'
-        }
+        })
 
         self.assertTrue(connection.CryptoPeerListener.is_handshake(real_handshake_dict))
         self.assertFalse(connection.CryptoPeerListener.is_handshake(fake_handshake_encrypted))

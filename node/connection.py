@@ -321,6 +321,8 @@ class CryptoPeerListener(PeerListener):
             message = json.loads(message)
         except ValueError:
             return False
+        except TypeError:
+            return False
 
         return 'type' in message
 
@@ -341,18 +343,16 @@ class CryptoPeerListener(PeerListener):
                 signature = message['sig'].decode('hex')
                 signed_data = message['data']
 
-                if self.validate_signature(signature, signed_data):
+                if CryptoPeerListener.validate_signature(signature, signed_data):
                     message = signed_data.decode('hex')
                     message = json.loads(message)
 
                     assert 'guid' in message, 'No recipient GUID specified'
 
                     if message['guid'] != self.guid:
-                        self.log.error('This message is not intended for your node.')
                         return
 
                 else:
-                    self.log.error('Signature does not validate')
                     return
 
             except RuntimeError as e:
@@ -366,14 +366,16 @@ class CryptoPeerListener(PeerListener):
         self.log.info('Message [%s]', message.get('type'))
         self._data_cb(message)
 
-    def validate_signature(self, signature, data):
+    @staticmethod
+    def validate_signature(signature, data):
+
+        print 'signature in', signature.encode('hex')
+        print 'data in', data
 
         data_json = json.loads(data.decode('hex'))
         sig_cryptor = Cryptor(pubkey_hex=data_json['pubkey'])
 
         if sig_cryptor.verify(signature, data):
-            self.log.info('Verified')
             return True
         else:
-            self.log.error('Message signature could not be verified')
             return False
