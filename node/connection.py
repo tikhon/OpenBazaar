@@ -309,54 +309,62 @@ class CryptoPeerListener(PeerListener):
         # soon all crypto code will be refactored and this will be removed
         self.cryptor = Cryptor(pubkey_hex=self.pubkey, privkey_hex=self.secret)
 
-    def _on_raw_message(self, serialized):
+    @staticmethod
+    def is_handshake(message):
+        """
+        Return whether message is a plaintext handshake
 
+        :param message: serialized JSON
+        :return: True if proper handshake message
+        """
         try:
-            msg = json.loads(serialized)
-
+            message = json.loads(message)
         except ValueError:
+            return False
 
-            # Data was not cleartext JSON, perhaps encrypted?
+        return 'type' in message
+
+    def _on_raw_message(self, serialized):
+        """
+        Handles receipt of encrypted/plaintext message
+        and passes to appropriate callback.
+
+        :param serialized:
+        :return:
+        """
+        if not self.is_handshake(serialized):
+
             try:
-                msg = self.cryptor.decrypt(serialized)
+                message = self.cryptor.decrypt(serialized)
+                message = json.loads(message)
 
-                msg = json.loads(msg)
-                signature = msg['sig'].decode('hex')
-                sig_data = msg['data']
-                data = json.loads(sig_data.decode('hex'))
+                signature = message['sig'].decode('hex')
+                signed_data = message['data']
 
-                self.log.info(
-                    "Decrypted Message [%s]",
-                    msg
-                )
+                if self.validate_signature(signature, signed_data):
+                    message = signed_data.decode('hex')
+                    message = json.loads(message)
 
-                # Check signature
-                if self.validate_signature(signature, sig_data):
-                    msg = data
+                    assert 'guid' in message, 'No recipient GUID specified'
 
-                    # Check that recipient is intended
-                    self.log.info('Recipient GUID: %s', msg['guid'])
-
-                    if msg['guid'] != self.guid:
+                    if message['guid'] != self.guid:
                         self.log.error('This message is not intended for your node.')
                         return
-
-                    # Check signature matches sender
-                    # TODO: if msg['senderGUID'] !=
 
                 else:
                     self.log.error('Signature does not validate')
                     return
 
-            except Exception as e:
+            except RuntimeError as e:
                 self.log.error('Could not decrypt message properly %s', e)
-                return
 
-        if 'type' in msg:
-            self.log.info('Message [%s]', msg.get('type'))
-            self._data_cb(msg)
+                if not CryptoPeerConnection.is_handshake(message):
+                    return None
         else:
-            self.log.error('Received a message with no type')
+            message = json.loads(serialized)
+
+        self.log.info('Message [%s]', message.get('type'))
+        self._data_cb(message)
 
     def validate_signature(self, signature, data):
 
