@@ -36,7 +36,7 @@ There are two methods for getting OpenBazaar working with Tor:
 
 1. Install the Proxychains package
 2. Start OpenBazaar with :
-` proxychains ./run.sh -j'
+` proxychains ./openbazaar -j start'
 
 ## 3. ONIONCAT
 
@@ -49,5 +49,5 @@ There are two methods for getting OpenBazaar working with Tor:
 5. Check that a new TUN interface configured with an IPv6 address has been created.
 6. Configure your firewall to drop all inbound traffic on that interface except for port tcp/12345
 7. Start OpenBazaar specifying your new IPv6 TUN address as follows :<br/>
-` ./run.sh -j -i a:b:c:d:e:f:g:h`
+` ./openbazaar -j -i a:b:c:d:e:f:g:h start`
 

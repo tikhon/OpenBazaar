@@ -55,7 +55,7 @@ cd OpenBazaar
 
 After running the configure.sh script you should have an OpenBazaar installation ready to go, to start run: 
 ```
-./run.sh
+./openbazaar start
 ```
 OpenBazaar will open in a random port on your default web browser. Note that it may take several minutes for OpenBazaar to completely start.
 

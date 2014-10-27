@@ -106,7 +106,7 @@ function installMac {
 function doneMessage {
   echo ""
   echo "OpenBazaar configuration finished."
-  echo "type './run.sh; tail -f logs/production.log' to start your OpenBazaar servent instance and monitor logging output."
+  echo "type './openbazaar start; tail -f logs/production.log' to start your OpenBazaar servent instance and monitor logging output."
   echo ""
   echo ""
   echo ""
@@ -172,7 +172,7 @@ function installRaspiArch {
     echo "Type the following shell command to start."
     echo " "
     echo "IP=\$(/sbin/ifconfig eth0 | grep 'inet ' | awk '{print \$2}')"
-    echo "./run.sh --disable-open-browser -k \$IP -q 8888 -p 12345; tail -f logs/production.log"
+    echo "./openbazaar --disable-open-browser -k \$IP -q 8888 -p 12345 start; tail -f logs/production.log"
   fi
 }
 
@@ -188,7 +188,7 @@ function installRaspbian {
     echo "Type the following shell command to start."
     echo " "
     echo "IP=\$(/sbin/ifconfig eth0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print \$1}')"
-    echo "./run.sh --disable-open-browser -k \$IP -q 8888 -p 12345; tail -f logs/production.log"
+    echo "./openbazaar --disable-open-browser -k \$IP -q 8888 -p 12345 start; tail -f logs/production.log"
   fi
 }
 

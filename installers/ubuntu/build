@@ -112,8 +112,6 @@ def copy_files():
     assert_current_dir_is('output')
 
     # copy the launcher scripts and icon
-    os.system('cp ' + OB_PROJECT_DIR + '/run.sh .' + USR_SHARE_OB_DIR)
-    os.system('cp ' + OB_PROJECT_DIR + '/stop.sh .' + USR_SHARE_OB_DIR)
     os.system('cp ' + OB_PROJECT_DIR + '/requirements.txt .' + USR_SHARE_OB_DIR)
     os.system('cp ' + OB_PROJECT_DIR + '/configure.sh .' + USR_SHARE_OB_DIR)
 
@@ -135,7 +133,7 @@ def copy_files():
     os.system('gzip -9 .' + DOC_DIR + '/changelog')
 
     # make sure launcher script is executable
-    os.system('cp ../openbazaar .' + BIN_DIR)
+    os.system('cp ' + OB_PROJECT_DIR + '/openbazaar .' + BIN_DIR)
     os.system('chmod 0755 .' + BIN_DIR + '/openbazaar')
 
     # copy DEBIAN files
