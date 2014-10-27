@@ -160,6 +160,83 @@ whose fingerprint is given below:
 As an example, see the
 [Beta 1.0 tag](https://github.com/OpenBazaar/OpenBazaar/tree/v0.1.0).
 
+The procedure for doing releases is through a release branch. If you are a casual
+contributor, you don't need to be aware of this procedure, as you can continue
+pull requesting on the `develop` branch.
+
+To release, approximately one week before the scheduled release date we will create
+a release branch off of `develop`. These branches are named in the format `release-0.2.0`,
+where `0.2.0` is our release version. This is called a *feature freeze*. Subsequently,
+this release branch is used for QA by our testers, which are currently mostly the development
+team and a couple of other individuals. QA includes running that version for a while and
+observing potential crashes, as well as performing common operations such as browsing
+markets. In addition, we make sure it runs on all the operating systems we support.
+
+3 days before the feature freeze (10 days before release), we do not merge:
+* Large stylistic changes
+* Important modifications to our build system
+* Upgrades to libraries we depend on
+* Large architectural changes
+
+After the feature freeze (one week before release), we do not merge:
+* Any new features
+* Non-critical bugfixes
+* Any significant code changes
+
+In case there are critical bugfixes to be made, we perform pull requests directly on the
+release branch. These are the only commits that happen directly on the release branch, in
+addition to a commit that increments the release version accordingly (a *version bump commit*).
+Critical bugfixes involve security and stability. Generally, we avoid such pull requests,
+and if your pull request is not critical, we'll ask you to target `develop`.
+
+Once the release date is reached, the release branch is merged into `master`, and `master` is
+backmerged into `develop` to include the fixes and bump made since.
+
+The following serve as checklists for the release maintainer:
+
+### Feature freeze checklist
+1. `git checkout develop`
+1. `git pull upstream develop`
+1. `git push origin develop`
+1. Get one LGTM on feature-freeze commit hash by the team.
+1. `git checkout -b release-x.y.z`
+1. `vim -p README.md changelog node/constants.py`
+1. `git add -u .`
+1. `git commit -m "Version bump to x.y.z"`
+1. `git push origin release-x.y.z`
+1. `git push upstream release-x.y.z`
+1. Announce feature freeze to team.
+
+### Release checklist
+1. `git checkout release-x.y.z`
+1. `git pull upstream release-x.y.z`
+1. `git push origin release-x.y.z`
+1. Get one LGTM on release-branch commit hash by the team.
+1. `git checkout master`
+1. `git pull upstream master`
+1. `git push origin master`
+1. `git merge --no-ff release-x.y.z`
+1. `git push origin master`
+1. Get one LGTM on release merge commit hash by the team.
+1. `git push upstream master`
+1. `git tag -s vx.y.z -m "OpenBazaar x.y.z"`
+1. `git tag -v vx.y.z`
+1. `git push origin vx.y.z`
+1. `git push upstream vx.y.z`
+1. Get one LGTM on release sig.
+1. Announce release on Reddit `/r/openbazaar`.
+1. Announce release on Twitter `@openbazaar`.
+1. `git checkout develop`
+1. `git pull upstream develop`
+1. `git push origin develop`
+1. `git checkout -b backmerge-x.y.z`
+1. `git merge master`
+1. `git push origin backmerge-x.y.z`
+1. `hub pull-request -m "Backmerging release x.y.z"`
+1. `git branch -d release-x.y.z`
+1. `git push origin :release-x.y.z`
+1. `git push upstream :release-x.y.z`
+
 ## Security
 OpenBazaar is security-related software. We make heavy use of cryptography and
 the blockchain. We employ
