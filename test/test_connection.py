@@ -150,6 +150,20 @@ class TestCryptoPeerConnection(TestPeerConnection):
     def test_repr(self):
         self.assertEqual(self.pc2.__repr__(), str(self.pc2))
 
+    def test_is_handshake(self):
+
+        real_handshake_dict = {
+            'type': 'ok'
+        }
+        fake_handshake_encrypted = "safjklawejfwoijsicjewiocjo"
+        fake_handshake_no_type = {
+            'notype': 'ok'
+        }
+
+        self.assertTrue(connection.CryptoPeerListener.is_handshake(real_handshake_dict))
+        self.assertFalse(connection.CryptoPeerListener.is_handshake(fake_handshake_encrypted))
+        self.assertFalse(connection.CryptoPeerListener.is_handshake(fake_handshake_no_type))
+
 
 if __name__ == "__main__":
     unittest.main()
