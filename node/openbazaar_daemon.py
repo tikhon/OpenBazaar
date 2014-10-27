@@ -145,7 +145,7 @@ class OpenBazaarContext(object):
                 'disable_open_browser': False,
                 'disable_sqlite_crypt': False,
                 'log_level': 30,
-                # CRITICAL=50, ERROR=40, WARNING=30, DEBUG=10, NOTSET=0
+                # CRITICAL=50, ERROR=40, WARNING=30, DEBUG=10, DATADUMP=5, NOTSET=0
                 'http_ip': '127.0.0.1',
                 'http_port': 0,
                 'bm_user': None,
@@ -272,10 +272,10 @@ class MarketApplication(tornado.web.Application):
     def shutdown(self, x=None, y=None):
         self.shutdown_mutex.acquire()
         print "MarketApplication.shutdown!"
-        locallogger = logging.getLogger(
+        log = logging.getLogger(
             '[%s] %s' % (self.market.market_id, 'root')
         )
-        locallogger.info("Received TERMINATE, exiting...")
+        log.info("Received TERMINATE, exiting...")
 
         self.cleanup_upnp_port_mapping()
         tornado.ioloop.IOLoop.instance().stop()
@@ -312,13 +312,20 @@ def create_logger(ob_ctx):
             u'%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(logFormat)
         logger.addHandler(handler)
+
+        logging.addLevelName(5, "DATADUMP")
+        def datadump(self, message, *args, **kwargs):
+            if self.isEnabledFor(5):
+                self._log(5, message, args, **kwargs)
+        logging.Logger.datadump = datadump
+
     except Exception as e:
         print "Could not setup logger, continuing: ", e.message
     return logger
 
 
-def log_openbazaar_start(logger, ob_ctx):
-    logger.info("Started OpenBazaar Web App at http://%s:%s" %
+def log_openbazaar_start(log, ob_ctx):
+    log.info("Started OpenBazaar Web App at http://%s:%s" %
                 (ob_ctx.http_ip, ob_ctx.http_port))
     print "Started OpenBazaar Web App at http://%s:%s" % \
           (ob_ctx.http_ip, ob_ctx.http_port)
