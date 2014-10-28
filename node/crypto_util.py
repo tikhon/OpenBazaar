@@ -138,8 +138,11 @@ class Cryptor(object):
                              MAC verification failed.
         @raise Exception: Decryption terminated abnormally.
         """
-        if self.has_privkey:
-            return self._ec.decrypt(data)
+        try:
+            if self.has_privkey:
+                return self._ec.decrypt(data)
+        except Exception as e:
+            print 'Cannot unpack data: %s', e
         raise RuntimeError("Cannot decrypt without private key.")
 
     def sign(self, data):
