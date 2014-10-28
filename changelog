@@ -1,10 +1,13 @@
 openbazaar (0.2.2) unstable; urgency=low
-  * Fixed logging bug.
+  * Version bump in README.md and node/constants.py.
+  * Default logging level set to 30 -- WARNING.
+  * First attempt at fixing logging issue.
 
  -- OpenBazaar Team <project@openbazaar.org>  Sun, 12 Oct 2014 15:30:00 -0500
 
 openbazaar (0.2.1) unstable; urgency=low
-  * Typo bug fix.
+  * Version bump in README.md and node/constants.py.
+  * Typo fix proposed by @freamon
 
  -- OpenBazaar Team <project@openbazaar.org>  Fri, 3 Oct 2014 15:30:00 -0500
 
