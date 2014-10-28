@@ -4,7 +4,6 @@ import logging
 import platform
 from pprint import pformat
 from urlparse import urlparse
-import zlib
 
 import obelisk
 import zmq
@@ -58,10 +57,9 @@ class PeerConnection(object):
         self.send_raw(json.dumps(data), callback)
 
     def send_raw(self, serialized, callback=None):
-        compressed_data = zlib.compress(serialized, 9)
-        self.stream.send(compressed_data)
+        self.stream.send(serialized)
 
-        def cb(stream, msg):
+        def cb(_, msg):
             try:
                 response = json.loads(msg[0])
             except ValueError:
@@ -182,26 +180,24 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
         data['senderNick'] = self.transport.nickname
         data['v'] = constants.VERSION
 
-        self.log.debug('Sending to peer: %s %s', self.ip, pformat(data))
+        # Sign cleartext data
+        sig_data = json.dumps(data).encode('hex')
+        signature = self.sign(sig_data).encode('hex')
 
-        jdata = json.dumps(data)
         try:
-            cipher_data = self.encrypt(jdata)
-            signature = self.sign(jdata)
+            # Encrypt signature and data
+            data = self.encrypt(json.dumps({
+                    'sig': signature,
+                    'data': sig_data
+                }))
         except Exception as e:
             self.log.error('Encryption failed. %s', e)
             return
 
         try:
-            self.send_raw(
-                json.dumps({
-                    'sig': signature.encode('hex'),
-                    'data': cipher_data.encode('hex')
-                }),
-                callback
-            )
+            self.send_raw(data, callback)
         except Exception as e:
-            self.log.error("Was not able to encode empty data: %s", e)
+            self.log.error("Was not able to send raw data: %s", e)
 
     def peer_to_tuple(self):
         return self.ip, self.port, self.guid
@@ -210,12 +206,13 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
         return self.guid
 
 
-class PeerListener(object):
-    def __init__(self, ip, port, ctx, data_cb):
+class PeerListener(GUIDMixin):
+    def __init__(self, ip, port, ctx, guid, data_cb):
+        super(PeerListener, self).__init__(guid)
+
         self.ip = ip
         self.port = port
         self._data_cb = data_cb
-
         self.uri = network_util.get_peer_url(self.ip, self.port)
         self.is_listening = False
         self.ctx = ctx
@@ -300,9 +297,9 @@ class PeerListener(object):
 
 class CryptoPeerListener(PeerListener):
 
-    def __init__(self, ip, port, pubkey, secret, ctx, data_cb):
+    def __init__(self, ip, port, pubkey, secret, ctx, guid, data_cb):
 
-        PeerListener.__init__(self, ip, port, ctx, data_cb)
+        super(CryptoPeerListener, self).__init__(ip, port, ctx, guid, data_cb)
 
         self.pubkey = pubkey
         self.secret = secret
@@ -312,60 +309,73 @@ class CryptoPeerListener(PeerListener):
         # soon all crypto code will be refactored and this will be removed
         self.cryptor = Cryptor(pubkey_hex=self.pubkey, privkey_hex=self.secret)
 
-    def _on_raw_message(self, serialized):
+    @staticmethod
+    def is_handshake(message):
+        """
+        Return whether message is a plaintext handshake
+
+        :param message: serialized JSON
+        :return: True if proper handshake message
+        """
         try:
-            # Decompress message
-            serialized = zlib.decompress(serialized)
-
-            msg = json.loads(serialized)
-            self.log.info("Message Received [%s]", msg.get('type', 'unknown'))
-
-            if msg.get('type') is None:
-
-                data = msg.get('data').decode('hex')
-                sig = msg.get('sig').decode('hex')
-
-                try:
-                    cryptor = Cryptor(privkey_hex=self.secret)
-
-                    try:
-                        data = cryptor.decrypt(data)
-                    except Exception as e:
-                        self.log.info('Exception: %s', e)
-
-                    self.log.debug('Signature: %s', sig.encode('hex'))
-                    self.log.debug('Signed Data: %s', data)
-
-                    # Check signature
-                    data_json = json.loads(data)
-                    cryptor = Cryptor(pubkey_hex=data_json['pubkey'])
-                    if cryptor.verify(sig, data):
-                        self.log.info('Verified')
-                    else:
-                        self.log.error(
-                            'Message signature could not be verified %s', msg
-                        )
-
-                    msg = json.loads(data)
-                    self.log.debug('Message Data %s', msg)
-                except Exception as e:
-                    self.log.error('Could not decrypt message properly %s', e)
-
+            message = json.loads(message)
         except ValueError:
+            return False
+        except TypeError:
+            return False
+
+        return 'type' in message
+
+    def _on_raw_message(self, serialized):
+        """
+        Handles receipt of encrypted/plaintext message
+        and passes to appropriate callback.
+
+        :param serialized:
+        :return:
+        """
+        if not self.is_handshake(serialized):
+
             try:
-                msg = self.cryptor.decrypt(serialized)
-                msg = json.loads(msg)
+                message = self.cryptor.decrypt(serialized)
+                message = json.loads(message)
 
-                self.log.info(
-                    "Decrypted Message [%s]",
-                    msg.get('type', 'unknown')
-                )
-            except Exception:
-                self.log.error("Could not decrypt message: %s", msg)
+                signature = message['sig'].decode('hex')
+                signed_data = message['data']
 
-                return
+                if CryptoPeerListener.validate_signature(signature, signed_data):
+                    message = signed_data.decode('hex')
+                    message = json.loads(message)
 
-        if msg.get('type') is not None:
-            self._data_cb(msg)
+                    assert 'guid' in message, 'No recipient GUID specified'
+
+                    if message['guid'] != self.guid:
+                        return
+
+                else:
+                    return
+
+            except RuntimeError as e:
+                self.log.error('Could not decrypt message properly %s', e)
+
+                if not CryptoPeerConnection.is_handshake(message):
+                    return None
         else:
-            self.log.error('Received a message with no type')
+            message = json.loads(serialized)
+
+        self.log.info('Message [%s]', message.get('type'))
+        self._data_cb(message)
+
+    @staticmethod
+    def validate_signature(signature, data):
+
+        print 'signature in', signature.encode('hex')
+        print 'data in', data
+
+        data_json = json.loads(data.decode('hex'))
+        sig_cryptor = Cryptor(pubkey_hex=data_json['pubkey'])
+
+        if sig_cryptor.verify(signature, data):
+            return True
+        else:
+            return False

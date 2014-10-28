@@ -693,7 +693,7 @@ class Market(object):
     def validate_on_query_page(self, *data):
         self.log.debug('Validating on query page message.')
         keys = ("senderGUID", "uri", "pubkey", "senderNick")
-        return all(k in data for k in keys)
+        return all(k in data[0] for k in keys)
 
     def on_query_page(self, peer):
         """Return your page info if someone requests it on the network"""
@@ -738,7 +738,7 @@ class Market(object):
 
     def validate_on_query_listings(self, *data):
         self.log.debug('Validating on query listings message.')
-        return "senderGUID" in data
+        return "senderGUID" in data[0]
 
     def on_query_listings(self, peer, page=0):
         """Run if someone is querying your listings"""
@@ -766,7 +766,7 @@ class Market(object):
     def validate_on_negotiate_pubkey(self, *data):
         self.log.debug('Validating on negotiate pubkey message.')
         keys = ("nickname", "ident_pubkey")
-        return all(k in data for k in keys)
+        return all(k in data[0] for k in keys)
 
     def on_negotiate_pubkey(self, ident_pubkey):
         """Run if someone is asking for your real pubKey"""
@@ -778,7 +778,7 @@ class Market(object):
     def validate_on_response_pubkey(self, *data):
         self.log.debug('Validating on response pubkey message.')
         keys = ("pubkey", "nickname", "signature")
-        return all(k in data for k in keys)
+        return all(k in data[0] for k in keys)
 
     def on_response_pubkey(self, response):
         """Deprecated. This is a DarkMarket holdover.

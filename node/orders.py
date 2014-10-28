@@ -36,7 +36,20 @@ class Orders(object):
         self.gpg = gnupg.GPG()
         self.db = db
         self.orders = self.get_orders()
-        self.transport.add_callback("order", self.on_order)
+
+        self.transport.add_callbacks([
+            (
+                'order',
+                {
+                    'cb': getattr(self, 'on_order'),
+                    'validator_cb': getattr(self, 'validate_on_order')
+                }
+            )
+        ])
+
+    def validate_on_order(self, *data):
+        self.log.debug('Validating on order message.')
+        return True
 
     def on_order(self, msg):
 
@@ -46,7 +59,6 @@ class Orders(object):
             self.new_order(msg)
 
         if state == self.State.BID:
-            self.log.info('GOT HERE')
             self.handle_bid_order(msg)
 
         if state == self.State.NOTARIZED:
@@ -217,7 +229,6 @@ class Orders(object):
                 self.log.error('Probably not a number %s', e)
 
         # Generate QR code
-        print offer_data_json
         qr = self.get_qr_code(offer_data_json['Contract']['item_title'], _order['address'], total_price)
         merchant_bitmessage = offer_data_json.get('Seller', '').get('seller_Bitmessage')
         buyer_bitmessage = buyer_data_json.get('Buyer', '').get('buyer_Bitmessage')
@@ -621,19 +632,11 @@ class Orders(object):
         # Add to contract and sign
         contract = bid.get('rawContract')
 
-        # Check signature and verify of seller and bidder contract
-        seed_contract = self.get_seed_contract_from_doublesigned(contract)
-        seed_contract_json = self.get_json_from_doublesigned_contract(seed_contract)
-
-        self.log.debug('seed contract json %s', seed_contract_json)
-
         contract_stripped = "".join(contract.split('\n'))
 
-        self.log.info(contract_stripped)
         bidder_pgp_start_index = contract_stripped.find("buyer_pgp", 0, len(contract_stripped))
         bidder_pgp_end_index = contract_stripped.find("buyer_GUID", 0, len(contract_stripped))
         bidder_pgp = contract_stripped[bidder_pgp_start_index + 13:bidder_pgp_end_index]
-        self.log.info(bidder_pgp)
 
         self.gpg.import_keys(bidder_pgp)
         v = self.gpg.verify(contract)
