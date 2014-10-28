@@ -32,7 +32,8 @@ def init_additional_STUN_servers(servers=_ADDITIONAL_STUN_SERVERS):
 
 
 def get_NAT_status():
-    nat_type, external_ip, external_port = stun.get_ip_info()
+    nat_type, external_ip, external_port = stun.get_ip_info(source_port=0)
+
     return {'nat_type': nat_type,
             'external_ip': external_ip,
             'external_port': external_port}

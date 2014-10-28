@@ -103,13 +103,26 @@ openbazaar [options] <command>
         openbazaar --enable-ip-checker start
         openbazaar -d --dev-nodes 4 -j --server-ip 79.104.98.111 start
         openbazaar --dev-mode -n 4 -i 79.104.98.111 start
+        openbazaar --server-ip 200.2.8.100 --server-port 12333 --disable-stun-check start
+        openbazaar stop
 
     OPTIONS
     -i, --server-ip <ip address>
         Server public IP
 
+        Notes:
+           * Default value will be the external ip your network configuration exposes to the internet.
+           * If '--disable-stun-check' is used and you don't specify '--server-ip' OpenBazaar
+             will refuse to start unless you are on development mode ('--dev-mode')
+
     -p, --server-port <port number>
-        Server public (P2P) port (default: 12345)
+        Server public (P2P) port.
+
+        Notes:
+           * Default value will be an arbitrary port number set by a STUN server check.
+           * If '--disable-stun-check' is used, default value will be port 12345.
+           * If you don't specify '--disable-stun-check' this number will be overwritten
+             by the port number obtained via STUN check.
 
     -k, --http-ip <ip address>
         Web interface IP (default 127.0.0.1; use 0.0.0.0 for any)
@@ -159,7 +172,7 @@ openbazaar [options] <command>
         Disable automatic UPnP port mappings
 
     --disable-stun-check
-        Disable automatic port setting via STUN servers (NAT Punching attempt)
+        Disable automatic server port setting via STUN servers (NAT Punching attempt)
 
     -S, --seed-mode
         Enable seed mode
@@ -191,12 +204,7 @@ def create_openbazaar_contexts(arguments, nat_status):
     """
     defaults = OpenBazaarContext.get_defaults()
 
-    server_ip = defaults['server_ip']
-    if server_ip != arguments.server_ip:
-        server_ip = arguments.server_ip
-    elif nat_status is not None:
-        print nat_status
-        server_ip = nat_status['external_ip']
+    server_ip = arguments.server_ip
 
     # "I'll purposefully leave these seemingly useless Schlemiel-styled
     # comments as visual separators to denote the beginning and end of
@@ -205,12 +213,14 @@ def create_openbazaar_contexts(arguments, nat_status):
     # annoy you." -Gubatron :)
 
     # market port
-    server_port = defaults['server_port']
-    if arguments.server_port != server_port:
-        server_port = arguments.server_port
-    elif arguments.server_port is None and nat_status is not None:
-        # override the port for p2p communications with the one
+    server_port = arguments.server_port
+
+    if nat_status is not None:
+        # unless --disable-stun-check has been passed
+        # override the server ip and port for p2p communications with the ones
         # obtained from the STUN server.
+        print nat_status
+        server_ip = nat_status['external_ip']
         server_port = nat_status['external_port']
 
     # log path (requires log_dir to exist)

@@ -315,9 +315,11 @@ def create_logger(ob_ctx):
         logger.addHandler(handler)
 
         logging.addLevelName(5, "DATADUMP")
+
         def datadump(self, message, *args, **kwargs):
             if self.isEnabledFor(5):
                 self._log(5, message, args, **kwargs)
+
         logging.Logger.datadump = datadump
 
     except Exception as e:
@@ -327,9 +329,8 @@ def create_logger(ob_ctx):
 
 def log_openbazaar_start(log, ob_ctx):
     log.info("Started OpenBazaar Web App at http://%s:%s" %
-                (ob_ctx.http_ip, ob_ctx.http_port))
-    print "Started OpenBazaar Web App at http://%s:%s" % \
-          (ob_ctx.http_ip, ob_ctx.http_port)
+             (ob_ctx.http_ip, ob_ctx.http_port))
+    print "Started OpenBazaar Web App at http://%s:%s" % (ob_ctx.http_ip, ob_ctx.http_port)
 
 
 def attempt_browser_open(ob_ctx):
