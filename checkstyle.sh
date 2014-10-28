@@ -87,10 +87,14 @@ js)
 exc)
     execute_bit_check
     ;;
+nl)
+    new_line_check
+    ;;
 *)
     python_check
     js_check
     execute_bit_check
+    new_line_check
 esac
 
 if $ERR ; then
