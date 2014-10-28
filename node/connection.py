@@ -28,6 +28,8 @@ class PeerConnection(object):
         self.ctx = transport.ctx
         self.socket = self.ctx.socket(zmq.REQ)
         self.socket.setsockopt(zmq.LINGER, 0)
+        self.socket.setsockopt(zmq.RECONNECT_IVL, 2000)
+        self.socket.setsockopt(zmq.RECONNECT_IVL_MAX, 16000)
         self.stream = zmqstream.ZMQStream(
             self.socket, io_loop=ioloop.IOLoop.current())
 
@@ -319,9 +321,7 @@ class CryptoPeerListener(PeerListener):
         """
         try:
             message = json.loads(message)
-        except ValueError:
-            return False
-        except TypeError:
+        except (ValueError, TypeError):
             return False
 
         return 'type' in message
