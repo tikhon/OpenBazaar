@@ -358,7 +358,7 @@ class CryptoPeerListener(PeerListener):
             except RuntimeError as e:
                 self.log.error('Could not decrypt message properly %s', e)
 
-                if not CryptoPeerConnection.is_handshake(message):
+                if not self.is_handshake(message):
                     return None
         else:
             message = json.loads(serialized)
