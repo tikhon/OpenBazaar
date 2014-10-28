@@ -1,3 +1,13 @@
+openbazaar (0.2.2) unstable; urgency=low
+  * Fixed logging bug.
+
+ -- OpenBazaar Team <project@openbazaar.org>  Sun, 12 Oct 2014 15:30:00 -0500
+
+openbazaar (0.2.1) unstable; urgency=low
+  * Typo bug fix.
+
+ -- OpenBazaar Team <project@openbazaar.org>  Fri, 3 Oct 2014 15:30:00 -0500
+
 openbazaar (0.2.0) unstable; urgency=low
   * Multiple bug fixes.
   * New feature: “Add Node” by entering Store GUID.
