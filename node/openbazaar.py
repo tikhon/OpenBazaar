@@ -217,9 +217,9 @@ def create_openbazaar_contexts(arguments, nat_status):
     if not os.path.exists(defaults['log_dir']):
         os.makedirs(defaults['log_dir'], 0755)
 
-    log_path = os.path.join(defaults['log_dir'], defaults['log_file'])
-    if arguments.log != log_path:
-        log_path = arguments.log
+    # log path (requires LOG_DIR to exist)
+    if not os.path.exists(defaults['log_dir']):
+        os.makedirs(defaults['log_dir'], 0755)
 
     # db path
     if not os.path.exists(defaults['db_dir']):
@@ -232,6 +232,13 @@ def create_openbazaar_contexts(arguments, nat_status):
     ob_ctxs = []
 
     if not arguments.dev_mode:
+
+        log_file = defaults['log_file']
+
+        log_path = os.path.join(defaults['log_dir'], log_file)
+        if arguments.log != log_path:
+            log_path = arguments.log
+
         # we return a list of a single element, a production node.
         ob_ctxs.append(OpenBazaarContext(nat_status,
                                          server_ip,
@@ -263,12 +270,14 @@ def create_openbazaar_contexts(arguments, nat_status):
             db_dev_filename = defaults['dev_db_file'].format(i)
             db_path = os.path.join(db_dirname, db_dev_filename)
 
-            seed_mode = False
+            log_file = defaults['dev_log_file']
+            dev_log_file = log_file.format(i)
+            log_path = os.path.join(defaults['log_dir'], dev_log_file)
 
-            if arguments.seeds == defaults['seeds']:
-                seeds = [defaults['server_ip']]
-
-            if i == 0:
+            if i:
+                seed_mode = False
+                seeds = ['localhost']
+            else:
                 seed_mode = True
                 seeds = []
 
@@ -315,7 +324,7 @@ def ensure_database_setup(ob_ctx, defaults):
         # setup the database if file not there.
         print "[openbazaar] bootstrapping database ", os.path.basename(db_path)
         setup_db.setup_db(db_path, ob_ctx.disable_sqlite_crypt)
-        print "[openbazaar] database setup completed"
+        print "[openbazaar] database setup completed\n"
 
 
 def start(arguments):

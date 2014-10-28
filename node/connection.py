@@ -368,10 +368,6 @@ class CryptoPeerListener(PeerListener):
 
     @staticmethod
     def validate_signature(signature, data):
-
-        print 'signature in', signature.encode('hex')
-        print 'data in', data
-
         data_json = json.loads(data.decode('hex'))
         sig_cryptor = Cryptor(pubkey_hex=data_json['pubkey'])
 

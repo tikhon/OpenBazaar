@@ -127,6 +127,7 @@ class OpenBazaarContext(object):
                 'server_port': 12345,
                 'log_dir': 'logs',
                 'log_file': 'production.log',
+                'dev_log_file': 'development-{0}.log',
                 'db_dir': 'db',
                 'db_file': 'ob.db',
                 'dev_db_file': 'ob-dev-{0}.db',
