@@ -208,7 +208,7 @@ def create_openbazaar_contexts(arguments, nat_status):
     server_port = defaults['server_port']
     if arguments.server_port != server_port:
         server_port = arguments.server_port
-    elif nat_status is not None:
+    elif arguments.server_port is None and nat_status is not None:
         # override the port for p2p communications with the one
         # obtained from the STUN server.
         server_port = nat_status['external_port']
