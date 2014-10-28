@@ -321,9 +321,7 @@ class CryptoPeerListener(PeerListener):
         """
         try:
             message = json.loads(message)
-        except ValueError:
-            return False
-        except TypeError:
+        except (ValueError, TypeError):
             return False
 
         return 'type' in message
