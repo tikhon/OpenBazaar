@@ -341,7 +341,7 @@ def start(arguments):
     nat_status = None
     if not arguments.disable_stun_check:
         print "Checking NAT Status..."
-        nat_status = network_util.check_NAT_status()
+        nat_status = network_util.get_NAT_status()
     elif not arguments.dev_mode and network_util.is_private_ip_address(arguments.server_ip):
         print "openbazaar: Could not start. The given/default server IP address",
         print arguments.server_ip, "is not a public ip address."
