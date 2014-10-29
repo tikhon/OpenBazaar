@@ -357,10 +357,11 @@ class CryptoPeerListener(PeerListener):
 
                 else:
                     return
-
             except RuntimeError as e:
                 self.log.error('Could not decrypt message properly %s', e)
                 return None
+            except Exception as e:
+                self.log.error('Cannot unpack data: %s', e)
         else:
             message = json.loads(serialized)
 
