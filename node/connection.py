@@ -350,9 +350,7 @@ class CryptoPeerListener(PeerListener):
                     message = signed_data.decode('hex')
                     message = json.loads(message)
 
-                    assert 'guid' in message, 'No recipient GUID specified'
-
-                    if message['guid'] != self.guid:
+                    if message.get('guid') != self.guid:
                         return
 
                 else:
