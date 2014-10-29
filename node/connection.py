@@ -350,17 +350,16 @@ class CryptoPeerListener(PeerListener):
                     message = signed_data.decode('hex')
                     message = json.loads(message)
 
-                    assert 'guid' in message, 'No recipient GUID specified'
-
-                    if message['guid'] != self.guid:
+                    if message.get('guid') != self.guid:
                         return
 
                 else:
                     return
-
             except RuntimeError as e:
                 self.log.error('Could not decrypt message properly %s', e)
                 return None
+            except Exception as e:
+                self.log.error('Cannot unpack data: %s', e)
         else:
             message = json.loads(serialized)
 
