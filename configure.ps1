@@ -144,12 +144,29 @@ Function Clean
     }
 }
 
+$pycountryUrl = "https://pypi.python.org/packages/source/p/pycountry/pycountry-1.8.zip"
+$pycountryZip = "$setupsDir\pycountry-1.8.zip"
+$pyCountry = "$setupsDir\pycountry-1.8"
+$pycountryEgg = "pycountry-1.8-py2.7.egg"
+
 Function MakeExe
 {
     if((Test-Path $packagesDir\zope\__init__.py) -eq 0)
     {
         New-Item $packagesDir\zope\__init__.py -type file
     }
+
+    if((Test-Path ".\$pycountryEgg") -eq 0)
+    {
+        DownloadFile "Downloading pycountry-1.8.zip..." $pycountryZip $pycountryUrl
+        [Reflection.Assembly]::LoadWithPartialName( "System.IO.Compression.FileSystem" )
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($pycountryZip, $setupsDir)
+        cd $pyCountry
+        Start-Process $python -Wait -NoNewWindow "setup.py bdist_egg"
+        cd $local
+        Copy-Item "$pyCountry\dist\$pycountryEgg" $local
+    }
+
     cd ".\installers\windows\"
     Start-Process $python -Wait -NoNewWindow "setup.py py2exe"
     cd ..

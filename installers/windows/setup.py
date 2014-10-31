@@ -9,7 +9,6 @@ import zmq.libzmq
 
 setup_dir = os.path.dirname(os.path.realpath(__file__))
 root_dir = os.path.dirname(os.path.dirname(setup_dir))
-pycountry_dir = os.path.dirname(pycountry.__file__)
 zmq_dir = os.path.dirname(zmq.__file__)
 
 # py2exe depedency detecion is quite problematic
@@ -28,9 +27,7 @@ def tree(root_dir, l, dest):
 
 data_files = []
 tree(root_dir + "\\html", data_files, ".")
-tree(pycountry_dir+"\\databases", data_files, "pycountry\\")
-tree(pycountry_dir+"\\locales", data_files, "pycountry\\")
-
+data_files.append((".", [root_dir + "\\pycountry-1.8-py2.7.egg"]))
 
 setup(
     console=[
@@ -50,11 +47,11 @@ setup(
             'bundle_files': 3,
             'compressed': 2,
             'optimize': 2,
-            'includes': ["zmq.utils", "zmq.utils.jsonapi", "zmq.utils.strtypes", "zmq.backend.cython"],
+            'includes': ["pkg_resources", "zmq.utils", "zmq.utils.jsonapi", "zmq.utils.strtypes", "zmq.backend.cython"],
 
             #HACK: py2exe copies libzmq.pyd with the wrong name zmq.libzmq.pyd
             #Manually excluding zmq.libzmq.pyd copies it with the right name
-            'excludes': ['zmq.libzmq'],
+            'excludes': ['zmq.libzmq', 'pycountry'],
             'dll_excludes':['IPHLPAPI.DLL', 'PSAPI.DLL', 'WTSAPI32.dll', 'w9xpopen.exe']
         }
     },
