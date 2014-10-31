@@ -1,11 +1,13 @@
 
+$validArgs = @('clean', 'exe')
+
 $local = Get-Location;
 $bin = Join-Path $local "bin"
 
-if(($args.Count -g 1) -or ($args[0] -ne "clean")))
+if(($args.Count -ge 1) -and (!$validArgs.contains($args[0])))
 {
     echo 'Valid usage:'
-    echo 'configure.ps1 [clean]'
+    echo 'configure.ps1 [clean|exe]'
     return
 }
 
@@ -142,6 +144,18 @@ Function Clean
     }
 }
 
+Function MakeExe
+{
+    if((Test-Path $packagesDir\zope\__init__.py) -eq 0)
+    {
+        New-Item $packagesDir\zope\__init__.py -type file
+    }
+    cd ".\installers\windows\"
+    Start-Process $python -Wait -NoNewWindow "setup.py py2exe"
+    cd ..
+    cd ..
+}
+
 if($args -eq 'clean')
 {
     Clean
@@ -149,4 +163,8 @@ if($args -eq 'clean')
 elseif($args.Count -eq 0)
 {
     Configure
+}
+elseif ($args -eq 'exe')
+{
+    MakeExe
 }
