@@ -10,8 +10,10 @@
 .vagrant
 blockchain
 db/*.db
+bin/
 env/
 gpg/random_seed
 html/backups/
 installers/ubuntu/*.deb
 installers/ubuntu/output/
+installers/windows/dist_exe/
