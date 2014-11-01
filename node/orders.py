@@ -905,9 +905,6 @@ class Orders(object):
             self.db.updateEntries(
                 "orders",
                 {
-                    'order_id': order_id
-                },
-                {
                     'market_id': self.transport.market_id,
                     'contract_key': contract_key,
                     'signed_contract_body': str(contract),
@@ -921,6 +918,9 @@ class Orders(object):
                     'shipping_price': offer_data_json['Contract']['item_delivery'].get('shipping_price', ''),
                     'note_for_merchant': bid_data_json['Buyer']['note_for_seller'],
                     "updated": time.time()
+                },
+                {
+                    'order_id': order_id
                 }
             )
 
