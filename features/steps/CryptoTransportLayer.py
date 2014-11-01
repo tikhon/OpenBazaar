@@ -1,7 +1,5 @@
 #pylint: disable=function-redefined
-#pylint: disable=no-name-in-module
 from behave import given, then, when
-#pylint: enable=no-name-in-module
 from zmq.eventloop import ioloop
 
 from node.db_store import Obdb
