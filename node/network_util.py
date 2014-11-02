@@ -23,6 +23,8 @@ _ADDITIONAL_STUN_SERVERS = (
     'stun.xten.com'
 )
 
+IP_DETECT_SITE = 'https://icanhazip.com'
+
 
 def init_additional_STUN_servers(servers=_ADDITIONAL_STUN_SERVERS):
     """Inject list of additional STUN servers."""
@@ -55,9 +57,9 @@ def is_private_ip_address(addr):
     return is_loopback_addr(addr) or IPy.IP(addr).iptype() != 'PUBLIC'
 
 
-def get_my_ip():
+def get_my_ip(ip_site=IP_DETECT_SITE):
     try:
-        r = requests.get('https://icanhazip.com')
+        r = requests.get(ip_site)
         return r.text.strip()
     except (AttributeError, requests.RequestException) as e:
         print '[Requests] error: %s' % e

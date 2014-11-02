@@ -1,6 +1,8 @@
 import collections
+import mock
 import unittest
 
+import requests
 import stun
 
 from node import network_util
@@ -27,6 +29,17 @@ class TestNodeNetworkUtil(unittest.TestCase):
         # Check no STUN server was removed or added twice.
         for server in stun_servers_pre:
             self.assertEqual(counter[server], 1)
+
+    @mock.patch.object(stun, 'get_ip_info')
+    def test_get_NAT_status(self, method_mock):
+        stun_response = ('Symmetric NAT', '123.45.67.89', '12345')
+        method_mock.return_value = stun_response
+
+        keys = ('nat_type', 'external_ip', 'external_port')
+        dict_response = {key: value for key, value in zip(keys, stun_response)}
+
+        self.assertEqual(dict_response, network_util.get_NAT_status())
+        method_mock.assert_called_once_with(source_port=0)
 
     def test_is_loopback_addr(self):
         self.assertTrue(network_util.is_loopback_addr("127.0.0.1"))
@@ -56,6 +69,36 @@ class TestNodeNetworkUtil(unittest.TestCase):
         self.assertTrue(network_util.is_private_ip_address('10.1.1.1'))
 
         self.assertFalse(network_util.is_private_ip_address('8.8.8.8'))
+
+    @mock.patch.object(requests, 'get')
+    def test_get_my_ip_from_default_site(self, mock_method):
+        stub_ip = '123.45.67.89'
+        response_mock = mock.NonCallableMock()
+        response_mock.text = stub_ip
+        mock_method.return_value = response_mock
+
+        self.assertEqual(stub_ip, network_util.get_my_ip())
+        mock_method.assert_called_once_with(network_util.IP_DETECT_SITE)
+
+    @mock.patch.object(requests, 'get')
+    def test_get_my_ip_from_user_specified_site(self, mock_method):
+        stub_ip = '123.45.67.89'
+        response_mock = mock.NonCallableMock()
+        response_mock.text = stub_ip
+        mock_method.return_value = response_mock
+
+        ip_site = 'http://ip.stub.org'
+        self.assertEqual(stub_ip, network_util.get_my_ip(ip_site=ip_site))
+        mock_method.assert_called_once_with(ip_site)
+
+    @mock.patch.object(requests, 'get', side_effect=requests.RequestException)
+    def test_get_my_ip_failed_request(self, mock_method):
+        self.assertIsNone(network_util.get_my_ip())
+
+    @mock.patch.object(requests, 'get')
+    def test_get_my_ip_bad_response(self, mock_method):
+        mock_method.return_value = None
+        self.assertIsNone(network_util.get_my_ip())
 
     def test_is_ipv6_address(self):
         self.assertTrue(network_util.is_ipv6_address('2a00::'))
