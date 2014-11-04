@@ -29,6 +29,30 @@ def set_stun_servers(servers=_ADDITIONAL_STUN_SERVERS):
     stun.stun_servers_list = tuple(servers)
 
 
+def stun_servers_status_report(servers=_ADDITIONAL_STUN_SERVERS):
+    good = []
+    bad = []
+    for s in servers:
+        print "probing %s..." % s
+        nt, ei, ep = stun.get_ip_info(stun_host=s, source_port=0)
+        if ei is None and ep is None:
+            print ":("
+            bad.append(s)
+        else:
+            print ":)"
+            good.append(s)
+
+    if len(good) > 0:
+        print "\n%s good servers\b" % len(good)
+        for s in good:
+            print " ", s
+
+    if len(bad) > 0:
+        print "\n%s bad servers" % len(bad)
+        for s in bad:
+            print " ", s
+
+
 def get_NAT_status():
     nat_type, external_ip, external_port = stun.get_ip_info(source_port=0)
 
