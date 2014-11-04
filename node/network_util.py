@@ -24,11 +24,9 @@ _ADDITIONAL_STUN_SERVERS = (
 )
 
 
-def init_additional_STUN_servers(servers=_ADDITIONAL_STUN_SERVERS):
-    """Inject list of additional STUN servers."""
-    server_set = set(stun.stun_servers_list)
-    server_set.update(servers)
-    stun.stun_servers_list = tuple(server_set)
+def set_stun_servers(servers=_ADDITIONAL_STUN_SERVERS):
+    """Manually set the list of good STUN servers."""
+    stun.stun_servers_list = tuple(servers)
 
 
 def get_NAT_status():

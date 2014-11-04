@@ -1,4 +1,3 @@
-import collections
 import unittest
 
 import stun
@@ -8,25 +7,13 @@ from node import network_util
 
 class TestNodeNetworkUtil(unittest.TestCase):
 
-    def test_init_additional_stun_servers(self):
-        stun_servers_pre = stun.stun_servers_list
+    def test_set_stun_servers(self):
         new_stun_servers = (
             'stun.openbazaar1.com',
             'stun.openbazaar2.com'
         )
-        network_util.init_additional_STUN_servers(servers=new_stun_servers)
-
-        counter = collections.Counter(stun.stun_servers_list)
-
-        # Check all new STUN servers are in.
-        for server in new_stun_servers:
-            self.assertEqual(counter[server], 1)
-
-        network_util.init_additional_STUN_servers(servers=new_stun_servers)
-
-        # Check no STUN server was removed or added twice.
-        for server in stun_servers_pre:
-            self.assertEqual(counter[server], 1)
+        network_util.set_stun_servers(servers=new_stun_servers)
+        self.assertItemsEqual(new_stun_servers, stun.stun_servers_list)
 
     def test_is_loopback_addr(self):
         self.assertTrue(network_util.is_loopback_addr("127.0.0.1"))

@@ -339,7 +339,7 @@ def ensure_database_setup(ob_ctx, defaults):
 
 def start(arguments):
     defaults = OpenBazaarContext.get_defaults()
-    network_util.init_additional_STUN_servers()
+    network_util.set_stun_servers()
 
     # Turn off checks that don't make sense in development mode
     if arguments.dev_mode:
