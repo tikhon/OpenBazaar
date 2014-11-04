@@ -1,14 +1,15 @@
+import sys
+
 import IPy
 import requests
 import stun
 
 
-# List taken and tested from natvpn project:
-# https://code.google.com/p/natvpn/source/browse/trunk/stun_server_list
-_ADDITIONAL_STUN_SERVERS = (
+# List taken from natvpn project and tested manually.
+# NOTE: This needs periodic updating.
+_STUN_SERVERS = (
     'stun.ekiga.net',
     'stun.ideasip.com',
-    'stun.iptel.org',
     'stun.voiparound.com',
     'stun.voipbuster.com',
     'stun.voipstunt.com',
@@ -16,41 +17,20 @@ _ADDITIONAL_STUN_SERVERS = (
 )
 
 
-def set_stun_servers(servers=_ADDITIONAL_STUN_SERVERS):
+def set_stun_servers(servers=_STUN_SERVERS):
     """Manually set the list of good STUN servers."""
     stun.stun_servers_list = tuple(servers)
 
 
-def stun_servers_status_report(servers=_ADDITIONAL_STUN_SERVERS):
-    good = []
-    bad = []
-    for s in servers:
-        print "probing %s..." % s
-        nt, ei, ep = stun.get_ip_info(stun_host=s, source_port=0)
-        if ei is None and ep is None:
-            print ":("
-            bad.append(s)
-        else:
-            print ":)"
-            good.append(s)
-
-    if len(good) > 0:
-        print "\n%s good servers\b" % len(good)
-        for s in good:
-            print " ", s
-
-    if len(bad) > 0:
-        print "\n%s bad servers" % len(bad)
-        for s in bad:
-            print " ", s
-
-
-def get_NAT_status():
-    nat_type, external_ip, external_port = stun.get_ip_info(source_port=0)
-
-    return {'nat_type': nat_type,
-            'external_ip': external_ip,
-            'external_port': external_port}
+def get_NAT_status(stun_host=None):
+    """
+    Given a server hostname, initiate a STUN request to it;
+    and return the response in the form of a dict.
+    """
+    response = stun.get_ip_info(stun_host=stun_host, source_port=0)
+    return {'nat_type': response[0],
+            'external_ip': response[1],
+            'external_port': response[2]}
 
 
 def is_loopback_addr(addr):
@@ -108,3 +88,22 @@ def get_peer_url(address, port, protocol='tcp'):
         return '%s://[%s]:%s' % (protocol, address, port)
     else:
         return '%s://%s:%s' % (protocol, address, port)
+
+
+def test_stun_servers(servers=_STUN_SERVERS):
+    """Check responses of the listed STUN servers."""
+    for s in servers:
+        print 'Probing', s, '...',
+        sys.stdout.flush()
+        status = get_NAT_status(s)
+        if status['external_ip'] is None or status['external_port'] is None:
+            print 'FAIL'
+        else:
+            print 'OK'
+
+
+def main():
+    test_stun_servers()
+
+if __name__ == '__main__':
+    main()
