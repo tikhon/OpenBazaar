@@ -56,6 +56,7 @@ class PeerConnection(object):
         self.socket.close(0)
 
     def send(self, data, callback):
+        data['v'] = constants.VERSION
         self.send_raw(json.dumps(data), callback)
 
     def send_raw(self, serialized, callback=None):
@@ -140,7 +141,8 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
                 'pubkey': self.transport.pubkey,
                 'uri': self.transport.uri,
                 'senderGUID': self.transport.guid,
-                'senderNick': self.transport.nickname
+                'senderNick': self.transport.nickname,
+                'v': constants.VERSION
             }),
             cb
         )

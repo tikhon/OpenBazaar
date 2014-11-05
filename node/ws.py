@@ -562,7 +562,7 @@ class ProtocolHandler(object):
 
         try:
             client = obelisk.ObeliskOfLightClient(
-                'tcp://obelisk2.airbitz.co:9091'
+                'tcp://obelisk.unsystem.net:9091'
             )
 
             seller = offer_data_json['Seller']
