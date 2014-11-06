@@ -625,7 +625,7 @@ class Market(object):
             hash_value.update('notary-index')
             key = hash_value.hexdigest()
 
-            if msg['notary'] is True:
+            if msg['notary']:
                 self.log.info('Letting the network know you are now a notary')
                 data = json.dumps({'notary_index_add': self.transport.guid})
                 self.transport.store(key, data, self.transport.guid)
