@@ -199,7 +199,7 @@ class DHT(object):
                             "findID": findID
                             }
 
-            if msg['findValue'] is True:
+            if msg['findValue']:
                 if key in self.dataStore and self.dataStore[key] is not None:
                     # Found key in local data store
                     response_msg["foundKey"] = self.dataStore[key]
@@ -678,7 +678,7 @@ class DHT(object):
         self.searches.append(new_search)
 
         # Determine if we're looking for a node or a key
-        findValue = True if call != 'findNode' else False
+        findValue = call != 'findNode'
 
         if startupShortlist == [] or startupShortlist is None:
 

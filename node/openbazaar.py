@@ -225,15 +225,15 @@ def create_openbazaar_contexts(arguments, nat_status):
 
     # log path (requires log_dir to exist)
     if not os.path.exists(defaults['log_dir']):
-        os.makedirs(defaults['log_dir'], 0755)
+        os.makedirs(defaults['log_dir'], 0o755)
 
     # log path (requires LOG_DIR to exist)
     if not os.path.exists(defaults['log_dir']):
-        os.makedirs(defaults['log_dir'], 0755)
+        os.makedirs(defaults['log_dir'], 0o755)
 
     # db path
     if not os.path.exists(defaults['db_dir']):
-        os.makedirs(defaults['db_dir'], 0755)
+        os.makedirs(defaults['db_dir'], 0o755)
 
     db_path = os.path.join(defaults['db_dir'], defaults['db_file'])
     if arguments.db_path != db_path:
@@ -328,7 +328,7 @@ def ensure_database_setup(ob_ctx, defaults):
     # make sure the folder exists wherever it is
     db_dirname = os.path.dirname(db_path)
     if not os.path.exists(db_dirname):
-        os.makedirs(db_dirname, 0755)
+        os.makedirs(db_dirname, 0o755)
 
     if not os.path.exists(db_path):
         # setup the database if file not there.
