@@ -67,7 +67,7 @@ class PeerConnection(object):
             except ValueError:
                 self.log.error('[send_raw] Bad JSON response: %s', msg[0])
                 return
-            self.log.debug('[send_raw] %s', pformat(response))
+            self.log.datadump('[send_raw] response: %s', pformat(response))
 
             # Update active peer info
             self.nickname = response.get('senderNick', self.nickname)
@@ -101,7 +101,7 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
             if not msg:
                 return
 
-            self.log.debug('ALIVE PEER %s', msg[0])
+            self.log.debugv('ALIVE PEER %s', msg[0])
             msg = msg[0]
             try:
                 msg = json.loads(msg)
@@ -185,6 +185,8 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
         # Sign cleartext data
         sig_data = json.dumps(data).encode('hex')
         signature = self.sign(sig_data).encode('hex')
+
+        self.log.datadump('Sending to peer: %s %s', self.address, pformat(data))
 
         try:
             # Encrypt signature and data
@@ -364,7 +366,8 @@ class CryptoPeerListener(PeerListener):
         else:
             message = json.loads(serialized)
 
-        self.log.info('Message [%s]', message.get('type'))
+        self.log.debugv('Received message of type "%s"',
+                       message.get('type', 'unknown'))
         self._data_cb(message)
 
     @staticmethod

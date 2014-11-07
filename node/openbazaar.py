@@ -12,9 +12,9 @@ import threading
 
 import psutil
 
-import network_util
-from openbazaar_daemon import node_starter, OpenBazaarContext, start_node
-import setup_db
+import node.network_util as network_util
+from node.openbazaar_daemon import node_starter, OpenBazaarContext, start_node
+import node.setup_db as setup_db
 
 
 def arg_to_key(arg):
@@ -138,6 +138,7 @@ openbazaar [options] <command>
         Expected <level> values are:
            0 - NOT SET
            5 - DATADUMP
+           9 - DEBUGV
           10 - DEBUG
           20 - INFO
           30 - WARNING
