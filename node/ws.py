@@ -1054,7 +1054,7 @@ class ProtocolHandler(object):
             return False
         params = request["params"]
         # Create callback handler to write response to the socket.
-        self.log.debug('found a handler!')
+        self.log.debugv('found a handler!')
         self._handlers[command](socket_handler, params)
         return True
 

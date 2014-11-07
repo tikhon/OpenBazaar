@@ -208,28 +208,28 @@ class CryptoTransportLayer(TransportLayer):
         return result
 
     def validate_on_hello(self, msg):
-        self.log.debug('Validating ping message.')
+        self.log.debugv('Validating ping message.')
         return True
 
     def on_hello(self, msg):
         self.log.info('Pinged %s', json.dumps(msg, ensure_ascii=False))
 
     def validate_on_store(self, msg):
-        self.log.debug('Validating store value message.')
+        self.log.debugv('Validating store value message.')
         return True
 
     def on_store(self, msg):
         self.dht._on_storeValue(msg)
 
     def validate_on_findNode(self, msg):
-        self.log.debug('Validating find node message.')
+        self.log.debugv('Validating find node message.')
         return True
 
     def on_findNode(self, msg):
         self.dht.on_find_node(msg)
 
     def validate_on_findNodeResponse(self, msg):
-        self.log.debug('Validating find node response message.')
+        self.log.debugv('Validating find node response message.')
         return True
 
     def on_findNodeResponse(self, msg):

@@ -125,7 +125,8 @@ class DHT(object):
                     return
 
         if peer_tuple in self.knownNodes:
-            self.log.debug("This peer is already known and up to date")
+            self.log.debugv('Peer already known and up to date: "%s" %s %s',
+                           nickname, uri, guid)
             return
         else:
             self._add_known_node(peer_tuple)
