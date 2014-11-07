@@ -314,14 +314,6 @@ def create_logger(ob_ctx):
         handler.setFormatter(logFormat)
         logger.addHandler(handler)
 
-        logging.addLevelName(5, "DATADUMP")
-
-        def datadump(self, message, *args, **kwargs):
-            if self.isEnabledFor(5):
-                self._log(5, message, args, **kwargs)
-
-        logging.Logger.datadump = datadump
-
     except Exception as e:
         print "Could not setup logger, continuing: ", e.message
     return logger
