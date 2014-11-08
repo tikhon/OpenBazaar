@@ -581,8 +581,6 @@ class ProtocolHandler(object):
             script = mk_multisig_script(pubkeys, 2, 3)
             multi_address = scriptaddr(script)
 
-            print 'multi address', multi_address
-
             def cb(ec, history, order):
                 settings = self.market.get_settings()
                 private_key = settings.get('privkey')

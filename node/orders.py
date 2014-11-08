@@ -643,25 +643,44 @@ class Orders(object):
         if v:
             self.log.info('Sellers contract verified')
 
-        notary = {}
-        notary['Notary'] = {
+        notary_section = {}
+
+        notary_section['Notary'] = {
             'notary_GUID': self.transport.guid,
             'notary_BTC_uncompressed_pubkey': privkey_to_pubkey(self.transport.settings['privkey']),
             'notary_pgp': self.transport.settings['PGPPubKey'],
-            'notary_fee': "1%",
+            'notary_fee': "",
             'notary_order_id': order_id
         }
 
-        self.log.debug('Notary: %s', notary)
+        offer_data_json = self.get_offer_json(contract, Orders.State.SENT)
+        bid_data_json = self.get_buyer_json(contract, Orders.State.SENT)
+
+        pubkeys = [
+            offer_data_json['Seller']['seller_BTC_uncompressed_pubkey'],
+            bid_data_json['Buyer']['buyer_BTC_uncompressed_pubkey'],
+            privkey_to_pubkey(self.transport.settings['privkey'])
+        ]
+
+        script = mk_multisig_script(pubkeys, 2, 3)
+        multisig_address = scriptaddr(script)
+
+        notary_section['Escrow'] = {
+            'multisig_address': multisig_address,
+            'redemption_script': script
+        }
+
+        self.log.debug('Notary: %s', notary_section)
 
         gpg = self.gpg
 
         # Prepare contract body
-        json_string = json.dumps(notary, indent=0)
+        notary_json = json.dumps(notary_section, indent=0)
         seg_len = 52
+
         out_text = "\n".join(
-            json_string[x:x + seg_len]
-            for x in range(0, len(json_string), seg_len)
+            notary_json[x:x + seg_len]
+            for x in range(0, len(notary_json), seg_len)
         )
 
         # Append new data to contract
