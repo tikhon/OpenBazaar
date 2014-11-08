@@ -16,6 +16,7 @@ from bitcoin import (
     scriptaddr
 )
 import tornado.websocket
+from twisted.internet import reactor
 from threading import Thread
 from backuptool import BackupTool, Backup, BackupJSONEncoder
 import trust
@@ -31,6 +32,7 @@ class ProtocolHandler(object):
         self.db = db
 
         self.transport.set_websocket_handler(self)
+        Thread(target=reactor.run, args=(False,)).start()
 
         self.all_messages = (
             'peer',
@@ -518,7 +520,8 @@ class ProtocolHandler(object):
                     multi_address,
                     lambda ec, history, order=order: cb(ec, history, order))
 
-            Thread(target=get_history).start()
+            reactor.callFromThread(get_history)
+
         except Exception as e:
             self.log.error('%s', e)
 
@@ -578,6 +581,8 @@ class ProtocolHandler(object):
             script = mk_multisig_script(pubkeys, 2, 3)
             multi_address = scriptaddr(script)
 
+            print 'multi address', multi_address
+
             def cb(ec, history, order):
                 settings = self.market.get_settings()
                 private_key = settings.get('privkey')
@@ -630,7 +635,7 @@ class ProtocolHandler(object):
                     lambda ec, history, order=order: cb(ec, history, order)
                 )
 
-            Thread(target=get_history).start()
+            reactor.callFromThread(get_history)
 
         except Exception as e:
             self.log.error('%s', e)
@@ -735,7 +740,7 @@ class ProtocolHandler(object):
                     lambda ec, history, order=order: cb(ec, history, order)
                 )
 
-            Thread(target=get_history).start()
+            reactor.callFromThread(get_history)
 
         except Exception as e:
             self.log.error('%s', e)
