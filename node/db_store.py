@@ -1,5 +1,6 @@
 import logging
 from pysqlcipher import dbapi2 as sqlite
+from threading import Lock
 
 
 class Obdb(object):
@@ -11,10 +12,12 @@ class Obdb(object):
         self.con = False
         self.log = logging.getLogger('DB')
         self.disable_sqlite_crypt = disable_sqlite_crypt
+        self.lock = Lock()
 
     def _connectToDb(self):
         """ Opens a db connection
         """
+        self.lock.acquire()
         self.con = sqlite.connect(
             self.db_path,
             detect_types=sqlite.PARSE_DECLTYPES,
@@ -39,6 +42,7 @@ class Obdb(object):
             except Exception:
                 pass
         self.con = False
+        self.lock.release()
 
     @staticmethod
     def _dictFactory(cursor, row):
@@ -80,7 +84,7 @@ class Obdb(object):
         @param where_dict: A dictionary with the WHERE clauses
         """
         if where_dict is None:
-            where_dict = {'"1"':'1'}
+            where_dict = {'"1"': '1'}
 
         self._connectToDb()
         with self.con:
@@ -136,7 +140,7 @@ class Obdb(object):
                 setfield_part.append("?")
             updatefield_part = ",".join(updatefield_part)
             setfield_part = ",".join(setfield_part)
-            query = "INSERT INTO %s(%s) VALUES(%s)"  % (
+            query = "INSERT INTO %s(%s) VALUES(%s)" % (
                 table, updatefield_part, setfield_part
             )
             cur.execute(query, tuple(sets))
@@ -156,7 +160,7 @@ class Obdb(object):
                            If ommited it will return all the rows of the table.
         """
         if where_dict is None:
-            where_dict = {'"1"':'1'}
+            where_dict = {'"1"': '1'}
         self._connectToDb()
         with self.con:
             cur = self.con.cursor()
@@ -197,7 +201,7 @@ class Obdb(object):
                            If ommited it will delete all the rows of the table.
         """
         if where_dict is None:
-            where_dict = {'"1"':'1'}
+            where_dict = {'"1"': '1'}
 
         self._connectToDb()
         with self.con:

@@ -8,11 +8,7 @@ import qrcode
 import random
 import time
 import urllib
-from pybitcointools import (
-    mk_multisig_script,
-    privkey_to_pubkey,
-    scriptaddr
-)
+from bitcoin import mk_multisig_script, privkey_to_pubkey, scriptaddr
 
 from decimal import Decimal
 import trust
@@ -35,13 +31,25 @@ class Orders(object):
 
     def __init__(self, transport, market_id, db):
         self.transport = transport
-        # self._priv = transport._myself
         self.market_id = market_id
         self.log = logging.getLogger('[%s] %s' % (self.market_id, self.__class__.__name__))
         self.gpg = gnupg.GPG()
         self.db = db
         self.orders = self.get_orders()
-        self.transport.add_callback("order", self.on_order)
+
+        self.transport.add_callbacks([
+            (
+                'order',
+                {
+                    'cb': getattr(self, 'on_order'),
+                    'validator_cb': getattr(self, 'validate_on_order')
+                }
+            )
+        ])
+
+    def validate_on_order(self, *data):
+        self.log.debug('Validating on order message.')
+        return True
 
     def on_order(self, msg):
 
@@ -51,7 +59,6 @@ class Orders(object):
             self.new_order(msg)
 
         if state == self.State.BID:
-            self.log.info('GOT HERE')
             self.handle_bid_order(msg)
 
         if state == self.State.NOTARIZED:
@@ -130,7 +137,6 @@ class Orders(object):
             end_of_bid_index = offer_data.find('- -----BEGIN PGP SIGNATURE', bid_data_index, len(offer_data))
 
         buyer_data_json = "{" + offer_data[bid_data_index:end_of_bid_index]
-        print buyer_data_json
         buyer_data_json = json.loads(buyer_data_json)
 
         return buyer_data_json
@@ -160,7 +166,9 @@ class Orders(object):
 
     @staticmethod
     def get_qr_code(item_title, address, total):
-        qr_url = urllib.urlencode({"url": item_title.decode('utf-8', 'ignore')})
+        if isinstance(item_title, unicode):
+            item_title = item_title.encode('utf-8', 'ignore')
+        qr_url = urllib.urlencode({"url": item_title})
         qr = qrcode.make("bitcoin:" + address + "?amount=" + str(total) + "&message=" + qr_url)
         output = StringIO.StringIO()
         qr.save(output, "PNG")
@@ -220,7 +228,6 @@ class Orders(object):
                 self.log.error('Probably not a number %s', e)
 
         # Generate QR code
-        print offer_data_json
         qr = self.get_qr_code(offer_data_json['Contract']['item_title'], _order['address'], total_price)
         merchant_bitmessage = offer_data_json.get('Seller', '').get('seller_Bitmessage')
         buyer_bitmessage = buyer_data_json.get('Buyer', '').get('buyer_Bitmessage')
@@ -252,7 +259,7 @@ class Orders(object):
         else:
             order['item_image'] = "img/no-photo.png"
 
-        self.log.debug('FULL ORDER: %s', order)
+        self.log.datadump('FULL ORDER: %s', order)
 
         return order
 
@@ -357,19 +364,6 @@ class Orders(object):
                 order['merchant_nickname'] = merchant[0]['nickname']
 
         return {"total": total_orders, "orders": orders}
-
-    # Create a new order
-    # def create_order(self, seller, text):
-    #     order_id = random.randint(0, 1000000)
-    #     buyer = self.transport._myself.public_key.encode('hex')
-    #     new_order = order(order_id, buyer, seller, 'new', text, self._escrows)
-    #
-    #     # Add a timestamp
-    #     new_order['created'] = time.time()
-    #
-    #     self.transport.send(new_order, seller)
-    #
-    #     self.db.insertEntry("orders", new_order)
 
     def ship_order(self, order, order_id, payment_address):
         self.log.info('Shipping order')
@@ -637,20 +631,11 @@ class Orders(object):
         # Add to contract and sign
         contract = bid.get('rawContract')
 
-        # Check signature and verify of seller and bidder contract
-        seed_contract = self.get_seed_contract_from_doublesigned(contract)
-        seed_contract_json = self.get_json_from_doublesigned_contract(seed_contract)
-        # seed_contract = seed_contract.replace('- -----', '-----')
-
-        self.log.debug('seed contract json %s', seed_contract_json)
-
         contract_stripped = "".join(contract.split('\n'))
 
-        self.log.info(contract_stripped)
         bidder_pgp_start_index = contract_stripped.find("buyer_pgp", 0, len(contract_stripped))
         bidder_pgp_end_index = contract_stripped.find("buyer_GUID", 0, len(contract_stripped))
         bidder_pgp = contract_stripped[bidder_pgp_start_index + 13:bidder_pgp_end_index]
-        self.log.info(bidder_pgp)
 
         self.gpg.import_keys(bidder_pgp)
         v = self.gpg.verify(contract)
@@ -793,7 +778,7 @@ class Orders(object):
         self.db.updateEntries(
             "orders",
             {'state': Orders.State.BUYER_PAID, 'shipping_address': json.dumps(msg['shipping_address']),
-                                                                             "updated": time.time()},
+             "updated": time.time()},
             {'buyer_order_id': buyer_order_id}
         )
         if self.transport.handler is not None:
@@ -900,7 +885,7 @@ class Orders(object):
                     'buyer': bid_data_json['Buyer']['buyer_GUID'],
                     'notary': notary_data_json['Notary']['notary_GUID'],
                     'address': multisig_address,
-                    'shipping_address': self.transport._myself.decrypt(
+                    'shipping_address': self.transport.cryptor.decrypt(
                         bid_data_json['Buyer']['buyer_deliveryaddr'].decode('hex')),
                     'item_price': offer_data_json['Contract'].get('item_price', 0),
                     'shipping_price': offer_data_json['Contract']['item_delivery'].get('shipping_price', 0),
@@ -919,9 +904,6 @@ class Orders(object):
             self.db.updateEntries(
                 "orders",
                 {
-                    'order_id': order_id
-                },
-                {
                     'market_id': self.transport.market_id,
                     'contract_key': contract_key,
                     'signed_contract_body': str(contract),
@@ -935,6 +917,9 @@ class Orders(object):
                     'shipping_price': offer_data_json['Contract']['item_delivery'].get('shipping_price', ''),
                     'note_for_merchant': bid_data_json['Buyer']['note_for_seller'],
                     "updated": time.time()
+                },
+                {
+                    'order_id': order_id
                 }
             )
 

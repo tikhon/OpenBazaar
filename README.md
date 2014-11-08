@@ -37,7 +37,7 @@ You can financially support the project by either:
 - Identity/Reputation system
 
 ## Project Status
-- *OpenBazaar* is currently in **beta 2.2**
+- *OpenBazaar* is currently in **beta 2.3**
 - New versions are scheduled for release at the end of each month
 - [Development Roadmap](https://github.com/OpenBazaar/OpenBazaar/wiki/Development-Roadmap)
 
@@ -55,7 +55,7 @@ cd OpenBazaar
 
 After running the configure.sh script you should have an OpenBazaar installation ready to go, to start run: 
 ```
-./run.sh
+./openbazaar start
 ```
 OpenBazaar will open in a random port on your default web browser. Note that it may take several minutes for OpenBazaar to completely start.
 

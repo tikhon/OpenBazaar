@@ -3,4 +3,16 @@
 if [[ $OSTYPE == darwin* ]] ; then
   export DYLD_LIBRARY_PATH=$(brew --prefix openssl)/lib:${DYLD_LIBRARY_PATH}
 fi
-./env/bin/python node/openbazaar.py "$@" &
+
+# if being executed from a ubuntu install out of /usr/bin
+# we make sure we are standing at openbazaar's folder
+# so we can make use of the virtual environment.
+if [[ ${BASH_SOURCE[0]} == /usr/bin/openbazaar ]] ; then
+  pushd /usr/share/openbazaar
+fi
+
+./env/bin/python -m node.openbazaar "$@" &
+
+if [[ ${BASH_SOURCE[0]} == /usr/bin/openbazaar ]] ; then
+  popd
+fi

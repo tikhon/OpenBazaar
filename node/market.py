@@ -13,11 +13,11 @@ from StringIO import StringIO
 from threading import Thread
 import traceback
 
-from pybitcointools.main import privkey_to_pubkey
+from bitcoin.main import privkey_to_pubkey
 import tornado
 
 import constants
-from crypto_util import makePrivCryptor
+from crypto_util import Cryptor
 from data_uri import DataURI
 from orders import Orders
 from protocol import proto_page, query_page
@@ -48,8 +48,8 @@ class Market(object):
 
         # Current
         self.transport = transport
-        self.dht = transport.get_dht()
-        self.market_id = transport.get_market_id()
+        self.dht = transport.dht
+        self.market_id = transport.market_id
         self.peers = self.dht.getActivePeers()
         self.db = db
         self.orders = Orders(transport, self.market_id, db)
@@ -212,7 +212,6 @@ class Market(object):
         if 'item_images' in msg['Contract']:
             if 'image1' in msg['Contract']['item_images']:
                 img = msg['Contract']['item_images']['image1']
-                self.log.debug("Contract Image %s", img)
                 new_uri = self.process_contract_image(img)
                 msg['Contract']['item_images'] = new_uri
         else:
@@ -379,8 +378,7 @@ class Market(object):
             for n in settings['notaries']:
                 peer = self.dht.routingTable.getContact(n.guid)
                 if peer is not None:
-                    t = Thread(target=peer.start_handshake)
-                    t.start()
+                    peer.start_handshake()
                     notaries.append(n)
             return notaries
         # End of untested code
@@ -412,20 +410,6 @@ class Market(object):
         # Updating the DHT index of your store's listings
         self.update_listings_index()
 
-        # If keywords store them in the keyword index
-        # keywords = msg['Contract']['item_keywords']
-        # self.log.info('Keywords: %s' % keywords)
-        # for keyword in keywords:
-        #
-        #     hash_value = hashlib.new('ripemd160')
-        #     hash_value.update('keyword-%s' % keyword)
-        #     keyword_key = hash_value.hexdigest()
-        #
-        #     self.transport.store(
-        #         keyword_key,
-        #         json.dumps({'keyword_index_add': contract_key}),
-        #         self.transport.guid)
-
     def update_listings_index(self):
         """This method is responsible for updating the DHT index of your
            store's listings. There is a dictionary in the DHT that has an
@@ -454,12 +438,16 @@ class Market(object):
         # Sign listing index for validation and tamper resistance
         data_string = str({'guid': self.transport.guid,
                            'contracts': my_contracts})
-        signature = makePrivCryptor(
-            self.transport.settings['secret']).sign(data_string).encode('hex')
+        cryptor = Cryptor(privkey_hex=self.transport.settings['secret'])
+        signature = cryptor.sign(data_string)
 
-        value = {'signature': signature,
-                 'data': {'guid': self.transport.guid,
-                          'contracts': my_contracts}}
+        value = {
+            'signature': signature.encode('hex'),
+            'data': {
+                'guid': self.transport.guid,
+                'contracts': my_contracts
+            }
+        }
 
         # Pass off to thread to keep GUI snappy
         t = Thread(
@@ -629,7 +617,6 @@ class Market(object):
 
     def save_settings(self, msg):
         """Update local settings"""
-        # self.log.debug("Settings to save %s", msg)
 
         # Check for any updates to arbiter or notary status to push to the DHT
         if 'notary' in msg:
@@ -638,7 +625,7 @@ class Market(object):
             hash_value.update('notary-index')
             key = hash_value.hexdigest()
 
-            if msg['notary'] is True:
+            if msg['notary']:
                 self.log.info('Letting the network know you are now a notary')
                 data = json.dumps({'notary_index_add': self.transport.guid})
                 self.transport.store(key, data, self.transport.guid)
@@ -687,8 +674,6 @@ class Market(object):
         settings['btc_pubkey'] = privkey_to_pubkey(settings.get('privkey'))
         settings['secret'] = settings.get('secret')
 
-        # self.log.info("SETTINGS: %s", settings)
-
         if settings:
             return settings
         else:
@@ -708,7 +693,7 @@ class Market(object):
     def validate_on_query_page(self, *data):
         self.log.debug('Validating on query page message.')
         keys = ("senderGUID", "uri", "pubkey", "senderNick")
-        return all(k in data for k in keys)
+        return all(k in data[0] for k in keys)
 
     def on_query_page(self, peer):
         """Return your page info if someone requests it on the network"""
@@ -724,8 +709,7 @@ class Market(object):
 
         def send_page_query():
             """Send a request for the local identity page"""
-            t = Thread(target=new_peer.start_handshake)
-            t.start()
+            new_peer.start_handshake()
 
             new_peer.send(proto_page(
                 self.transport.uri,
@@ -742,8 +726,7 @@ class Market(object):
                 settings.get('arbiterDescription', ''),
                 self.transport.sin))
 
-        t = Thread(target=send_page_query)
-        t.start()
+        send_page_query()
 
     def validate_on_query_myorders(self, *data):
         self.log.debug('Validating on query myorders message.')
@@ -755,7 +738,7 @@ class Market(object):
 
     def validate_on_query_listings(self, *data):
         self.log.debug('Validating on query listings message.')
-        return "senderGUID" in data
+        return "senderGUID" in data[0]
 
     def on_query_listings(self, peer, page=0):
         """Run if someone is querying your listings"""
@@ -783,7 +766,7 @@ class Market(object):
     def validate_on_negotiate_pubkey(self, *data):
         self.log.debug('Validating on negotiate pubkey message.')
         keys = ("nickname", "ident_pubkey")
-        return all(k in data for k in keys)
+        return all(k in data[0] for k in keys)
 
     def on_negotiate_pubkey(self, ident_pubkey):
         """Run if someone is asking for your real pubKey"""
@@ -795,7 +778,7 @@ class Market(object):
     def validate_on_response_pubkey(self, *data):
         self.log.debug('Validating on response pubkey message.')
         keys = ("pubkey", "nickname", "signature")
-        return all(k in data for k in keys)
+        return all(k in data[0] for k in keys)
 
     def on_response_pubkey(self, response):
         """Deprecated. This is a DarkMarket holdover.

@@ -1,38 +1,41 @@
-import re
-import socket
-import struct
+import IPy
 import requests
-from requests.exceptions import RequestException
-from IPy import IPint
 import stun
 
 
-def init_aditional_STUN_servers():
-    """try calling this method only once"""
-    # list of additional stun servers taken (and tested) from natvpn project
-    # https://code.google.com/p/natvpn/source/browse/trunk/stun_server_list
-    # removed those that didn't ping back.
-    stun.stun_servers_list = stun.stun_servers_list + (
-        'stun.l.google.com',
-        'stun1.l.google.com',
-        'stun2.l.google.com',
-        'stun3.l.google.com',
-        'stun4.l.google.com',
-        'stun.ekiga.net',
-        'stun.ideasip.com',
-        'stun.iptel.org',
-        'stun.schlund.de',
-        'stunserver.org',
-        'stun.voiparound.com',
-        'stun.voipbuster.com',
-        'stun.voipstunt.com',
-        'stun.voxgratia.org',
-        'stun.xten.com'
-    )
+# List taken and tested from natvpn project:
+# https://code.google.com/p/natvpn/source/browse/trunk/stun_server_list
+_ADDITIONAL_STUN_SERVERS = (
+    'stun.l.google.com',
+    'stun1.l.google.com',
+    'stun2.l.google.com',
+    'stun3.l.google.com',
+    'stun4.l.google.com',
+    'stun.ekiga.net',
+    'stun.ideasip.com',
+    'stun.iptel.org',
+    'stun.schlund.de',
+    'stunserver.org',
+    'stun.voiparound.com',
+    'stun.voipbuster.com',
+    'stun.voipstunt.com',
+    'stun.voxgratia.org',
+    'stun.xten.com'
+)
+
+IP_DETECT_SITE = 'https://icanhazip.com'
 
 
-def check_NAT_status():
-    nat_type, external_ip, external_port = stun.get_ip_info()
+def init_additional_STUN_servers(servers=_ADDITIONAL_STUN_SERVERS):
+    """Inject list of additional STUN servers."""
+    server_set = set(stun.stun_servers_list)
+    server_set.update(servers)
+    stun.stun_servers_list = tuple(server_set)
+
+
+def get_NAT_status():
+    nat_type, external_ip, external_port = stun.get_ip_info(source_port=0)
+
     return {'nat_type': nat_type,
             'external_ip': external_ip,
             'external_port': external_port}
@@ -50,67 +53,37 @@ def is_valid_protocol(protocol):
     return protocol == 'tcp'
 
 
-def is_valid_ip_address(addr):
-    try:
-        socket.inet_aton(addr)
-        return True
-    except socket.error:
-        return False
-
-
 def is_private_ip_address(addr):
-    if is_loopback_addr(addr):
-        return True
-    if not is_valid_ip_address(addr):
-        return False
-    # http://stackoverflow.com/questions/691045/how-do-you-determine-if-an-ip-address-is-private-in-python
-    f = struct.unpack('!I', socket.inet_pton(socket.AF_INET, addr))[0]
-    private = (
-        # 127.0.0.0,   255.0.0.0   http://tools.ietf.org/html/rfc3330
-        [2130706432, 4278190080],
-        # 192.168.0.0, 255.255.0.0 http://tools.ietf.org/html/rfc1918
-        [3232235520, 4294901760],
-        # 172.16.0.0,  255.240.0.0 http://tools.ietf.org/html/rfc1918
-        [2886729728, 4293918720],
-        # 10.0.0.0,    255.0.0.0   http://tools.ietf.org/html/rfc1918
-        [167772160, 4278190080],
-    )
-    for net in private:
-        if f & net[1] == net[0]:
-            return True
-    return False
+    return is_loopback_addr(addr) or IPy.IP(addr).iptype() != 'PUBLIC'
 
 
-def uri_parts(uri):
-    m = re.match(r"(\w+)://([\w\.]+):(\d+)", uri)
-    if m is not None:
-        return m.group(1), m.group(2), m.group(3)
-    else:
-        raise RuntimeError('URI is not valid')
-
-
-def get_my_ip():
+def get_my_ip(ip_site=IP_DETECT_SITE):
     try:
-        r = requests.get('https://icanhazip.com')
+        r = requests.get(ip_site)
         return r.text.strip()
-    except (AttributeError, RequestException) as e:
+    except (AttributeError, requests.RequestException) as e:
         print '[Requests] error: %s' % e
     return None
 
 
 def is_ipv6_address(ip):
-    address = IPint(ip)
-    return address.version == 6
+    return IPy.IP(ip).version() == 6
 
 
-def get_peer_url(address, port):
+def get_peer_url(address, port, protocol='tcp'):
     """
-    Returns a url for a peer that can be used by ZMQ
+    Return a URL which can be used by ZMQ.
 
-    @param address: A string which can be an IPv4 address, an IPv6 address
-                    or a DNS name
+    @param address: An IPv4 address, an IPv6 address or a DNS name.
+    @type address: str
 
-    @param port: the port that will be used to connect to the peer
+    @param port: The port that will be used to connect to the peer
+    @type port: int
+
+    @param protocol: The connection protocol
+    @type protocol: str
+
+    @rtype: str
     """
     try:
         # is_ipv6_address will throw an exception for a DNS name
@@ -119,7 +92,7 @@ def get_peer_url(address, port):
         is_ipv6 = False
 
     if is_ipv6:
-        # an IPv6 address must be enclosed in brackets
-        return 'tcp://[%s]:%s' % (address, port)
+        # An IPv6 address must be enclosed in brackets.
+        return '%s://[%s]:%s' % (protocol, address, port)
     else:
-        return 'tcp://%s:%s' % (address, port)
+        return '%s://%s:%s' % (protocol, address, port)

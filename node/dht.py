@@ -8,8 +8,9 @@ import logging
 import os
 import routingtable
 import time
-import socket
 from threading import Thread
+
+import network_util
 
 
 class DHT(object):
@@ -45,7 +46,7 @@ class DHT(object):
         """
         ip = seed_peer.ip
         port = seed_peer.port
-        self.add_known_node(('tcp://%s:%s' % (ip, port), seed_peer.guid, seed_peer.nickname))
+        self._add_known_node(('tcp://%s:%s' % (ip, port), seed_peer.guid, seed_peer.nickname))
 
         self.log.debug('Starting Seed Peer: %s', seed_peer.nickname)
         self.add_peer(self.transport,
@@ -67,7 +68,7 @@ class DHT(object):
     def remove_active_peer(self, uri):
         for idx, peer in enumerate(self.activePeers):
             if uri == peer.address:
-                # self.activePeers[idx].cleanup_context()
+                self.activePeers[idx].close_socket()
                 del self.activePeers[idx]
 
     def add_seed(self, transport, uri):
@@ -124,10 +125,11 @@ class DHT(object):
                     return
 
         if peer_tuple in self.knownNodes:
-            self.log.debug("This peer is already known and up to date")
+            self.log.debugv('Peer already known and up to date: "%s" %s %s',
+                           nickname, uri, guid)
             return
         else:
-            self.add_known_node(peer_tuple)
+            self._add_known_node(peer_tuple)
 
         self.log.info(
             'New peer seen; starting handshake - %s %s %s',
@@ -138,15 +140,12 @@ class DHT(object):
 
         def cb():
             self.log.debug('Back from handshake %s', new_peer)
-            self.routingTable.removeContact(new_peer.guid)
-            self.routingTable.addContact(new_peer)
             self.transport.save_peer_to_db(peer_tuple)
-            self.add_known_node((new_peer.address, new_peer.pub, new_peer.guid, new_peer.nickname))
 
         t = Thread(target=new_peer.start_handshake, args=(cb,))
         t.start()
 
-    def add_known_node(self, node):
+    def _add_known_node(self, node):
         """ Accept a peer tuple and add it to known nodes list
         :param node: (tuple)
         :return: N/A
@@ -183,7 +182,6 @@ class DHT(object):
         findID = msg['findID']
         uri = msg['uri']
         pubkey = msg['pubkey']
-        # nick = msg['senderNick']
 
         assert guid is not None and guid != self.transport.guid
         assert key is not None
@@ -202,7 +200,7 @@ class DHT(object):
                             "findID": findID
                             }
 
-            if msg['findValue'] is True:
+            if msg['findValue']:
                 if key in self.dataStore and self.dataStore[key] is not None:
                     # Found key in local data store
                     response_msg["foundKey"] = self.dataStore[key]
@@ -214,15 +212,6 @@ class DHT(object):
 
                 new_peer.send(response_msg)
             else:
-                # UNUSED
-                # Search for contact in routing table
-                # foundContact = self.routingTable.getContact(key)
-                # if foundContact:
-                #     self.log.info('Found the node')
-                #     response_msg["foundNode"] = (foundContact.guid,
-                #                                  foundContact.address,
-                #                                  foundContact.pub)
-                # else:
                 self.log.info('Sending found nodes to: %s', guid)
                 response_msg["foundNodes"] = self.close_nodes(key, guid)
 
@@ -244,9 +233,6 @@ class DHT(object):
 
     def on_findNodeResponse(self, transport, msg):
 
-        # Update pubkey if necessary - happens for seed server
-        # localPeer = next((peer for peer in self.activePeers if peer.guid == msg['senderGUID']), None)
-
         # Update existing peer's pubkey if active peer
         for idx, peer in enumerate(self.activePeers):
             if peer.guid == msg['senderGUID']:
@@ -263,9 +249,6 @@ class DHT(object):
                     s.callback(msg['foundKey'])
                     if idx in self.searches:
                         del self.searches[idx]
-                    # self.searches[msg['findID']].callback(msg['foundKey'])
-
-                    # Remove active search
 
         else:
 
@@ -292,9 +275,6 @@ class DHT(object):
                         del self.searches[idx]
 
             else:
-
-                # Add any close nodes found to the shortlist
-                # self.extendShortlist(transport, msg['findID'], msg['foundNodes'])
 
                 foundSearch = False
                 search = ""
@@ -332,7 +312,7 @@ class DHT(object):
                     for idx, probe in enumerate(search.active_probes):
                         if probe == search_tuple:
                             del search.active_probes[idx]
-                    self.log.debug(
+                    self.log.datadump(
                         'Find Node Response - Active Probes After: %s',
                         search.active_probes
                     )
@@ -340,7 +320,7 @@ class DHT(object):
                     # Add this to already contacted list
                     if search_tuple not in search.already_contacted:
                         search.already_contacted.append(search_tuple)
-                    self.log.debug(
+                    self.log.datadump(
                         'Already Contacted: %s',
                         search.already_contacted
                     )
@@ -424,7 +404,7 @@ class DHT(object):
 
     def extendShortlist(self, transport, findID, foundNodes):
 
-        self.log.debug('foundNodes: %s', foundNodes)
+        self.log.datadump('foundNodes: %s', foundNodes)
 
         foundSearch = False
         for s in self.searches:
@@ -436,7 +416,7 @@ class DHT(object):
             self.log.error('There was no search found for this ID')
             return
 
-        self.log.debug('Short list before: %s', search.shortlist)
+        self.log.datadump('Short list before: %s', search.shortlist)
 
         for node in foundNodes:
 
@@ -461,7 +441,7 @@ class DHT(object):
                 self.log.debug('Adding new peer to active peers list: %s', node)
                 self.add_peer(self.transport, node_uri, node_pubkey, node_guid, node_nick)
 
-        self.log.debug('Short list after: %s', search.shortlist)
+        self.log.datadump('Short list after: %s', search.shortlist)
 
     def find_listings(self, transport, key, listingFilter=None, callback=None):
         """
@@ -521,7 +501,8 @@ class DHT(object):
 
         # Find appropriate storage nodes and save key value
         if value_to_store:
-            self.log.debug('Value to store: %s %s', key, value_to_store)
+            self.log.info('Storing key to DHT: %s', key)
+            self.log.datadump('Value to store: %s', value_to_store)
             self.iterativeFindNode(
                 key,
                 lambda msg, findKey=key, value=value_to_store, originalPublisherID=originalPublisherID, age=age:
@@ -530,7 +511,7 @@ class DHT(object):
 
     def storeKeyValue(self, nodes, key, value, originalPublisherID, age):
 
-        self.log.debug('Store Key Value: (%s, %s %s)', nodes, key, type(value))
+        self.log.datadump('Store Key Value: (%s, %s %s)', nodes, key, type(value))
 
         try:
 
@@ -599,17 +580,9 @@ class DHT(object):
         )
 
         for node in nodes:
-
             self.log.debug('Sending data to store in DHT: %s', node)
-
-            try:
-                socket.inet_pton(socket.AF_INET6, node[0])
-                uri = 'tcp://[%s]:%s' % (node[0], node[1])
-            except (socket.error, ValueError):
-                uri = 'tcp://%s:%s' % (node[0], node[1])
-
+            uri = network_util.get_peer_url(node[0], node[1])
             guid = node[2]
-
             peer = self.routingTable.getContact(guid)
 
             if guid == self.transport.guid:
@@ -623,12 +596,13 @@ class DHT(object):
 
     def _on_storeValue(self, msg):
 
-        self.log.debug('Received Store Command %s', msg)
-
         key = msg['key']
         value = msg['value']
         originalPublisherID = msg['originalPublisherID']
         age = msg['age']
+
+        self.log.info('Storing key %s for %s', key, originalPublisherID)
+        self.log.datadump('Value: %s', value)
 
         now = int(time.time())
         originallyPublished = now - age
@@ -636,7 +610,7 @@ class DHT(object):
         if value:
             self.dataStore.setItem(key, value, now, originallyPublished, originalPublisherID, self.market_id)
         else:
-            self.log.info('No value to store')
+            self.log.error('No value to store')
 
     def store(self, key, value, originalPublisherID=None, age=0, **kwargs):
         """ Store the received data in this node's local hash table
@@ -707,18 +681,7 @@ class DHT(object):
         self.searches.append(new_search)
 
         # Determine if we're looking for a node or a key
-        findValue = True if call != 'findNode' else False
-
-        # If search is for your key abandon search
-        # if not findValue and key == self.settings['guid']:
-        #     return 'You are looking for yourself'
-
-        # If looking for a node check in your active peers list first to prevent unnecessary searching
-        # if not findValue:
-        #     self.log.info('Looking for node in your active connections list')
-        #     for node in self.activePeers:
-        #         if node.guid == key:
-        #             return [node]
+        findValue = call != 'findNode'
 
         if startupShortlist == [] or startupShortlist is None:
 
@@ -759,9 +722,6 @@ class DHT(object):
             self.routingTable.distance(firstNode.guid, targetKey),
             self.routingTable.distance(secondNode.guid, targetKey)))
 
-        # while len(self.pendingIterationCalls):
-        # del self.pendingIterationCalls[0]
-
         # TODO: Put this in the callback
         # if new_search.key in new_search.find_value_result:
         # return new_search.find_value_result
@@ -789,7 +749,7 @@ class DHT(object):
 
             # Remove dupes
             new_search.shortlist = self.dedupe(new_search.shortlist)
-            self.log.info(new_search.shortlist)
+            self.log.datadump(new_search.shortlist)
 
             new_search.shortlist.sort(lambda firstNode, secondNode, targetKey=new_search.key: cmp(
                 self.routingTable.distance(firstNode[2], targetKey),
@@ -829,9 +789,6 @@ class DHT(object):
 
                     else:
                         self.log.error('No contact was found for this guid: %s', node[2])
-
-            # if new_search.contactedNow == constants.alpha:
-            #     break
 
     def activeSearchExists(self, findID):
 
@@ -887,4 +844,4 @@ class DHTSearch(object):
             if item not in self.shortlist:
                 self.shortlist.append(item)
 
-        self.log.debug('Updated short list: %s', self.shortlist)
+        self.log.datadump('Updated short list: %s', self.shortlist)

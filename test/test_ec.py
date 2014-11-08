@@ -2,6 +2,8 @@ import unittest
 
 import pyelliptic as ec
 
+from node import crypto_util
+
 
 class TestPyellipticSymmetric(unittest.TestCase):
 
@@ -48,9 +50,8 @@ class TestPyellipticAsymmetric(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.ecc_curve = "secp256k1"
-        cls.alice = ec.ECC(curve=cls.ecc_curve)
-        cls.bob = ec.ECC(curve=cls.ecc_curve)
+        cls.alice = ec.ECC(curve=crypto_util.BTC_CURVE)
+        cls.bob = ec.ECC(curve=crypto_util.BTC_CURVE)
         cls.bob_pubkey = cls.bob.get_pubkey()
         cls.bob_privkey = cls.bob.get_privkey()
         cls.alice_pubkey = cls.alice.get_pubkey()
@@ -81,7 +82,7 @@ class TestPyellipticAsymmetric(unittest.TestCase):
             agent2.get_ecdh_key(agent1.get_pubkey())
 
     def test_encrypt_is_static(self):
-        obj_agent1 = ec.ECC(curve=self.ecc_curve)
+        obj_agent1 = ec.ECC(curve=crypto_util.BTC_CURVE)
         obj_agent2 = ec.ECC(curve='sect283k1')
         cls_agent3 = ec.ECC
 

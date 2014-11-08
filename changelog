@@ -1,3 +1,19 @@
+openbazaar (0.2.3) unstable; urgency=low
+  * Messages between peers are no longer compressed.
+
+ -- OpenBazaar Team <project@openbazaar.org>  Thu, 30 Oct 2014 15:30:00 -0500
+
+openbazaar (0.2.2) unstable; urgency=low
+  * Default logging level set to 30 -- WARNING.
+  * First attempt at fixing logging issue.
+
+ -- OpenBazaar Team <project@openbazaar.org>  Sun, 12 Oct 2014 15:30:00 -0500
+
+openbazaar (0.2.1) unstable; urgency=low
+  * Typo fix proposed by @freamon
+
+ -- OpenBazaar Team <project@openbazaar.org>  Fri, 3 Oct 2014 15:30:00 -0500
+
 openbazaar (0.2.0) unstable; urgency=low
   * Multiple bug fixes.
   * New feature: “Add Node” by entering Store GUID.

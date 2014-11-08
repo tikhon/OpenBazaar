@@ -48,8 +48,8 @@ class OpenBazaarContext(object):
 
     def __init__(self,
                  nat_status,
-                 server_public_ip,
-                 server_public_port,
+                 server_ip,
+                 server_port,
                  http_ip,
                  http_port,
                  db_path,
@@ -59,7 +59,7 @@ class OpenBazaarContext(object):
                  bm_user,
                  bm_pass,
                  bm_port,
-                 seed_peers,
+                 seeds,
                  seed_mode,
                  dev_mode,
                  dev_nodes,
@@ -69,8 +69,8 @@ class OpenBazaarContext(object):
                  disable_sqlite_crypt,
                  enable_ip_checker):
         self.nat_status = nat_status
-        self.server_public_ip = server_public_ip
-        self.server_public_port = server_public_port
+        self.server_ip = server_ip
+        self.server_port = server_port
         self.http_ip = http_ip
         self.http_port = http_port
         self.db_path = db_path
@@ -80,7 +80,7 @@ class OpenBazaarContext(object):
         self.bm_user = bm_user
         self.bm_pass = bm_pass
         self.bm_port = bm_port
-        self.seed_peers = seed_peers
+        self.seeds = seeds
         self.seed_mode = seed_mode
         self.dev_mode = dev_mode
         self.dev_nodes = dev_nodes
@@ -95,11 +95,8 @@ class OpenBazaarContext(object):
         self.started_utc_timestamp = long(time.time())
 
     def __repr__(self):
-        r = {"nat_status.nat_type": self.nat_status['nat_type'] if self.nat_status is not None else None,
-             "nat_status.external_ip": self.nat_status['external_ip'] if self.nat_status is not None else None,
-             "nat_status.external_port": self.nat_status['external_port'] if self.nat_status is not None else None,
-             "server_public_ip": self.server_public_ip,
-             "server_public_port": self.server_public_port,
+        r = {"server_ip": self.server_ip,
+             "server_port": self.server_port,
              "http_ip": self.http_ip,
              "http_port": self.http_port,
              "log_path": self.log_path,
@@ -107,7 +104,7 @@ class OpenBazaarContext(object):
              "bm_user": self.bm_user,
              "bm_pass": self.bm_pass,
              "bm_port": self.bm_port,
-             "seed_peers": self.seed_peers,
+             "seeds": self.seeds,
              "seed_mode": self.seed_mode,
              "dev_mode": self.dev_mode,
              "dev_nodes": self.dev_nodes,
@@ -118,67 +115,72 @@ class OpenBazaarContext(object):
              "disable_sqlite_crypt": self.disable_sqlite_crypt,
              "enable_ip_checker": self.enable_ip_checker,
              "started_utc_timestamp": self.started_utc_timestamp,
-             "uptime_in_secs": long(time.time()) - long(self.started_utc_timestamp)}
+             "uptime_in_secs": (long(time.time()) -
+                                long(self.started_utc_timestamp))}
 
         return json.dumps(r).replace(", ", ",\n  ")
 
     @staticmethod
     def get_defaults():
-        return {'MARKET_ID': 1,
-                'SERVER_IP': '127.0.0.1',
-                'SERVER_PORT': 12345,
-                'LOG_DIR': 'logs',
-                'LOG_FILE': 'production.log',
-                'DB_DIR': 'db',
-                'DB_FILE': 'ob.db',
-                'DEV_DB_FILE': 'ob-dev-{0}.db',
-                'DEVELOPMENT': False,
-                'DEV_NODES': 3,
-                'SEED_MODE': False,
-                'SEED_HOSTNAMES': ['seed.openbazaar.org',
-                                   'seed2.openbazaar.org',
-                                   'seed.openlabs.co',
-                                   'us.seed.bizarre.company',
-                                   'eu.seed.bizarre.company'],
-                'DISABLE_UPNP': False,
-                'DISABLE_STUN_CHECK': False,
-                'DISABLE_OPEN_DEFAULT_WEBBROWSER': False,
-                'DISABLE_SQLITE_CRYPT': False,
-                # CRITICAL=50, ERROR=40, WARNING=30, DEBUG=10, NOTSET=0
-                'LOG_LEVEL': 30,
-                'NODES': 3,
-                'HTTP_IP': '127.0.0.1',
-                'HTTP_PORT': None,
-                'BITMESSAGE_USER': None,
-                'BITMESSAGE_PASS': None,
-                'BITMESSAGE_PORT': -1,
-                'ENABLE_IP_CHECKER': False,
-                'CONFIG_FILE': None}
+        return {'market_id': 1,
+                'server_ip': '127.0.0.1',
+                'server_port': 12345,
+                'log_dir': 'logs',
+                'log_file': 'production.log',
+                'dev_log_file': 'development-{0}.log',
+                'db_dir': 'db',
+                'db_file': 'ob.db',
+                'dev_db_file': 'ob-dev-{0}.db',
+                'dev_mode': False,
+                'dev_nodes': 3,
+                'seed_mode': False,
+                'seeds': [
+                    'seed.openbazaar.org',
+                    'seed2.openbazaar.org',
+                    'seed.openlabs.co',
+                    'us.seed.bizarre.company',
+                    'eu.seed.bizarre.company'
+                ],
+                'disable_upnp': False,
+                'disable_stun_check': False,
+                'disable_open_browser': False,
+                'disable_sqlite_crypt': False,
+                'log_level': 30,
+                # CRITICAL=50 ERROR=40 WARNING=30 DEBUG=10 DEBUGV=9 DATADUMP=5 NOTSET=0
+                'http_ip': '127.0.0.1',
+                'http_port': 0,
+                'bm_user': None,
+                'bm_pass': None,
+                'bm_port': -1,
+                'enable_ip_checker': False,
+                'config_file': None}
 
     @staticmethod
     def create_default_instance():
         defaults = OpenBazaarContext.get_defaults()
-        return OpenBazaarContext(None,
-                                 server_public_ip=defaults['SERVER_IP'],
-                                 server_public_port=defaults['SERVER_PORT'],
-                                 http_ip=defaults['SERVER_IP'],
-                                 http_port=defaults['SERVER_PORT'],
-                                 db_path=os.path.join(defaults['DB_DIR'], defaults['DB_FILE']),
-                                 log_path=os.path.join(defaults['LOG_DIR'], defaults['LOG_FILE']),
-                                 log_level=defaults['LOG_LEVEL'],
-                                 market_id=defaults['MARKET_ID'],
-                                 bm_user=defaults['BITMESSAGE_USER'],
-                                 bm_pass=defaults['BITMESSAGE_PASS'],
-                                 bm_port=defaults['BITMESSAGE_PORT'],
-                                 seed_peers=defaults['SEED_HOSTNAMES'],
-                                 seed_mode=defaults['SEED_MODE'],
-                                 dev_mode=defaults['DEVELOPMENT'],
-                                 dev_nodes=defaults['DEV_NODES'],
-                                 disable_upnp=defaults['DISABLE_UPNP'],
-                                 disable_stun_check=defaults['DISABLE_STUN_CHECK'],
-                                 disable_open_browser=defaults['DISABLE_OPEN_DEFAULT_WEBBROWSER'],
-                                 disable_sqlite_crypt=defaults['DISABLE_SQLITE_CRYPT'],
-                                 enable_ip_checker=defaults['ENABLE_IP_CHECKER'])
+        return OpenBazaarContext(
+            None,
+            server_ip=defaults['server_ip'],
+            server_port=defaults['server_port'],
+            http_ip=defaults['http_ip'],
+            http_port=defaults['http_port'],
+            db_path=os.path.join(defaults['db_dir'], defaults['db_file']),
+            log_path=os.path.join(defaults['log_dir'], defaults['log_file']),
+            log_level=defaults['log_level'],
+            market_id=defaults['market_id'],
+            bm_user=defaults['bm_user'],
+            bm_pass=defaults['bm_pass'],
+            bm_port=defaults['bm_port'],
+            seeds=defaults['seeds'],
+            seed_mode=defaults['seed_mode'],
+            dev_mode=defaults['dev_mode'],
+            dev_nodes=defaults['dev_nodes'],
+            disable_upnp=defaults['disable_upnp'],
+            disable_stun_check=defaults['disable_stun_check'],
+            disable_open_browser=defaults['disable_open_browser'],
+            disable_sqlite_crypt=defaults['disable_sqlite_crypt'],
+            enable_ip_checker=defaults['enable_ip_checker']
+        )
 
 
 class MarketApplication(tornado.web.Application):
@@ -190,7 +192,7 @@ class MarketApplication(tornado.web.Application):
         self.market = Market(self.transport, db)
         self.upnp_mapper = None
 
-        peers = ob_ctx.seed_peers if not ob_ctx.seed_mode else []
+        peers = ob_ctx.seeds if not ob_ctx.seed_mode else []
         self.transport.join_network(peers)
 
         handlers = [
@@ -206,9 +208,7 @@ class MarketApplication(tornado.web.Application):
         super(MarketApplication, self).__init__(handlers, **settings)
 
     def start_app(self):
-        if self.ob_ctx.http_port is None:
-            self.ob_ctx.http_port = 0  # query the kernel for a port
-
+        # If self.ob_ctx.http_port is 0, the kernel is queried for a port.
         sockets = tornado.netutil.bind_sockets(
             self.ob_ctx.http_port,
             address=self.ob_ctx.http_ip
@@ -219,7 +219,7 @@ class MarketApplication(tornado.web.Application):
         self.ob_ctx.http_port = sockets[0].getsockname()[1]
 
         if not self.ob_ctx.disable_upnp:
-            self.setup_upnp_port_mappings(self.ob_ctx.server_public_port)
+            self.setup_upnp_port_mappings(self.ob_ctx.server_port)
         else:
             print "MarketApplication.start_app(): Disabling upnp setup"
 
@@ -235,20 +235,26 @@ class MarketApplication(tornado.web.Application):
             self.upnp_mapper = upnp.PortMapper()
             self.upnp_mapper.clean_my_mappings(p2p_port)
 
-            result_tcp_p2p_mapping = self.upnp_mapper.add_port_mapping(p2p_port,
-                                                                       p2p_port)
-            print ("UPnP TCP P2P Port Map configuration done (%s -> %s) => %s" %
-                   (str(p2p_port), str(p2p_port), str(result_tcp_p2p_mapping)))
+            result_tcp_p2p_mapping = self.upnp_mapper.add_port_mapping(
+                p2p_port, p2p_port
+            )
+            print "UPnP TCP P2P Port Map configuration done ",
+            print "(%s -> %s) => %s" % (
+                p2p_port, p2p_port, result_tcp_p2p_mapping
+            )
 
-            result_udp_p2p_mapping = self.upnp_mapper.add_port_mapping(p2p_port,
-                                                                       p2p_port,
-                                                                       'UDP')
-            print ("UPnP UDP P2P Port Map configuration done (%s -> %s) => %s" %
-                   (str(p2p_port), str(p2p_port), str(result_udp_p2p_mapping)))
+            result_udp_p2p_mapping = self.upnp_mapper.add_port_mapping(
+                p2p_port, p2p_port, 'UDP'
+            )
+            print "UPnP UDP P2P Port Map configuration done ",
+            print "(%s -> %s) => %s" % (
+                p2p_port, p2p_port, result_udp_p2p_mapping
+            )
 
             result = result_tcp_p2p_mapping and result_udp_p2p_mapping
             if not result:
-                print "Warning: UPnP was not setup correctly. Ports could not be automatically mapped."
+                print "Warning: UPnP was not setup correctly. ",
+                print "Ports could not be automatically mapped."
 
         return result
 
@@ -259,17 +265,19 @@ class MarketApplication(tornado.web.Application):
                     print "Cleaning UPnP Port Mapping -> ", \
                         self.upnp_mapper.clean_my_mappings(self.transport.port)
             except AttributeError:
-                print "[openbazaar] MarketApplication.clean_upnp_port_mapping() failed!"
+                print (
+                    "[openbazaar] "
+                    "MarketApplication.clean_upnp_port_mapping() failed!"
+                )
 
     def shutdown(self, x=None, y=None):
         self.shutdown_mutex.acquire()
         print "MarketApplication.shutdown!"
-        locallogger = logging.getLogger(
+        log = logging.getLogger(
             '[%s] %s' % (self.market.market_id, 'root')
         )
-        locallogger.info("Received TERMINATE, exiting...")
+        log.info("Received TERMINATE, exiting...")
 
-        # transport.broadcast_goodbye()
         self.cleanup_upnp_port_mapping()
         tornado.ioloop.IOLoop.instance().stop()
 
@@ -292,13 +300,8 @@ def start_io_loop():
 def create_logger(ob_ctx):
     logger = None
     try:
-        logging.basicConfig(
-            level=int(ob_ctx.log_level),
-            format=u'%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            filename=ob_ctx.log_path
-        )
-        logging._defaultFormatter = logging.Formatter(u'%(message)s')
-        logger = logging.getLogger('[%s] %s' % (ob_ctx.market_id, 'root'))
+        logger = logging.getLogger()
+        logger.setLevel(int(ob_ctx.log_level))
 
         handler = logging.handlers.RotatingFileHandler(
             ob_ctx.log_path,
@@ -306,19 +309,26 @@ def create_logger(ob_ctx):
             maxBytes=50000000,
             backupCount=1
         )
+        logFormat = logging.Formatter(
+            u'%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(logFormat)
         logger.addHandler(handler)
+
     except Exception as e:
         print "Could not setup logger, continuing: ", e.message
     return logger
 
-def log_openbazaar_start(logger, ob_ctx):
-    logger.info("Started OpenBazaar Web App at http://%s:%s" % (ob_ctx.http_ip, ob_ctx.http_port))
-    print "Started OpenBazaar Web App at http://%s:%s" % \
-          (ob_ctx.http_ip, ob_ctx.http_port)
+
+def log_openbazaar_start(log, ob_ctx):
+    log.info("Started OpenBazaar Web App at http://%s:%s" %
+             (ob_ctx.http_ip, ob_ctx.http_port))
+    print "Started OpenBazaar Web App at http://%s:%s" % (ob_ctx.http_ip, ob_ctx.http_port)
+
 
 def attempt_browser_open(ob_ctx):
     if not ob_ctx.disable_open_browser:
-        open_default_webbrowser('http://%s:%s' % (ob_ctx.http_ip, ob_ctx.http_port))
+        open_default_webbrowser(
+            'http://%s:%s' % (ob_ctx.http_ip, ob_ctx.http_port))
 
 
 def setup_signal_handlers(application):
@@ -334,8 +344,9 @@ def node_starter(ob_ctxs):
     # the actual OpenBazaar instances.
 
     for ob_ctx in ob_ctxs:
-        p = multiprocessing.Process(target=start_node, args=(ob_ctx,),
-                                    name="Process::openbazaar_daemon::target(start_node)")
+        p = multiprocessing.Process(
+            target=start_node, args=(ob_ctx,),
+            name="Process::openbazaar_daemon::target(start_node)")
         p.daemon = False  # python has to wait for this user thread to end.
         p.start()
 

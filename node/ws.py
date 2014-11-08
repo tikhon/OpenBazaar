@@ -7,7 +7,7 @@ import gnupg
 import obelisk
 import json
 import random
-from pybitcointools import (
+from bitcoin import (
     apply_multisignatures,
     eligius_pushtx,
     mk_multisig_script,
@@ -22,7 +22,8 @@ import trust
 
 
 class ProtocolHandler(object):
-    def __init__(self, transport, market_application, handler, db, loop_instance):
+    def __init__(self, transport, market_application, handler, db,
+                 loop_instance):
         self.market_application = market_application
         self.market = self.market_application.market
         self.transport = transport
@@ -149,9 +150,6 @@ class ProtocolHandler(object):
             countryCodes.append({"code": country.alpha2, "name": country.name})
 
         settings = self.market.get_settings()
-        # globalTrust = trust.getTrust(self.transport.guid)
-
-        # print(trust.get(self.transport.guid))
 
         message = {
             'type': 'myself',
@@ -162,24 +160,18 @@ class ProtocolHandler(object):
             'sin': self.transport.sin,
             'uri': self.transport.uri,
             'countryCodes': countryCodes,
-            # 'globalTrust': globalTrust
         }
 
-        # print('Sending opening')
         self.send_to_client(None, message)
 
         burnAddr = trust.burnaddr_from_guid(self.transport.guid)
-        # def found_unspent(amount_in_satoshis):
 
         def found_unspent(amount):
-            # print("found_unspent")
             self.send_to_client(None, {
                 'type': 'burn_info_available',
                 'amount': amount,
                 'addr': burnAddr
             })
-
-        # print("getting unspent")
 
         trust.get_unspent(burnAddr, found_unspent)
 
@@ -202,7 +194,7 @@ class ProtocolHandler(object):
         return "contracts" in data
 
     def on_listing_results(self, msg):
-        self.log.debug('Found results %s', msg)
+        self.log.datadump('Found results %s', msg)
         self.send_to_client(None, {
             "type": "store_contracts",
             "products": msg['contracts']
@@ -223,7 +215,7 @@ class ProtocolHandler(object):
         return True
 
     def on_listing_result(self, msg):
-        self.log.debug('Found result %s', msg)
+        self.log.datadump('Found result %s', msg)
         self.send_to_client(None, {
             "type": "store_contract",
             "contract": msg
@@ -239,7 +231,6 @@ class ProtocolHandler(object):
     def client_add_trusted_notary(self, socket_handler, msg):
         self.log.info('Adding trusted notary %s', msg)
         self.market.add_trusted_notary(msg.get('guid'), msg.get('nickname'))
-        # self.send_to_client(None, {"type": "load_page"})
 
     def client_add_guid(self, socket_handler, msg):
         self.log.info('Adding node by guid %s', msg)
@@ -386,7 +377,6 @@ class ProtocolHandler(object):
             "Importing New Contract "
             "(NOT IMPLEMENTED! TODO: Market.import_contract(contract)"
         )
-        # self.market.import_contract(contract)
 
     # Get a single order's info
     def client_query_order(self, socket_handler, msg):
@@ -400,7 +390,7 @@ class ProtocolHandler(object):
         self.market.save_settings(msg['settings'])
 
     def client_create_contract(self, socket_handler, contract):
-        self.log.info("New Contract: %s", contract)
+        self.log.datadump('New Contract: %s', contract)
         self.market.save_contract(contract)
 
     def client_remove_contract(self, socket_handler, msg):
@@ -498,12 +488,13 @@ class ProtocolHandler(object):
                 # Create unsigned transaction
                 unspent = [row[:4] for row in history if row[4] is None]
 
-                # Send all unspent outputs (everything in the address) minus the fee
+                # Send all unspent outputs (everything in the address) minus
+                # the fee
                 total_amount = 0
                 inputs = []
                 for row in unspent:
                     assert len(row) == 4, 'Obelisk returned a wonky row'
-                    inputs.append(str(row[0].encode('hex')) + ":" + str(row[1]))
+                    inputs.append("%s:%s" % (row[0].encode('hex'), row[1]))
                     value = row[3]
                     total_amount += value
 
@@ -514,14 +505,18 @@ class ProtocolHandler(object):
                 payment_output = order['payment_address']
                 tx = mktx(inputs, ["%s:%s" % (payment_output, send_amount)])
 
-                signatures = [multisign(tx, x, script, private_key) for x in range(len(inputs))]
+                signatures = [multisign(tx, x, script, private_key)
+                              for x in range(len(inputs))]
 
                 self.market.release_funds_to_merchant(
-                    buyer['buyer_order_id'], tx, script, signatures, order.get('merchant')
+                    buyer['buyer_order_id'], tx, script, signatures,
+                    order.get('merchant')
                 )
 
             def get_history():
-                client.fetch_history(multi_address, lambda ec, history, order=order: cb(ec, history, order))
+                client.fetch_history(
+                    multi_address,
+                    lambda ec, history, order=order: cb(ec, history, order))
 
             Thread(target=get_history).start()
         except Exception as e:
@@ -595,7 +590,8 @@ class ProtocolHandler(object):
                 # Create unsigned transaction
                 unspent = [row[:4] for row in history if row[4] is None]
 
-                # Send all unspent outputs (everything in the address) minus the fee
+                # Send all unspent outputs (everything in the address) minus
+                # the fee
                 total_amount = 0
                 inputs = []
                 for row in unspent:
@@ -647,7 +643,7 @@ class ProtocolHandler(object):
     def on_release_funds_tx(self, msg):
         self.log.info('Receiving signed tx from buyer')
 
-        buyer_order_id = str(msg['senderGUID']) + '-' + str(msg['buyer_order_id'])
+        buyer_order_id = "%s-%s" % (msg['senderGUID'], msg['buyer_order_id'])
         order = self.market.orders.get_order(buyer_order_id, by_buyer_id=True)
         contract = order['signed_contract_body']
 
@@ -700,7 +696,8 @@ class ProtocolHandler(object):
 
                 unspent = [row[:4] for row in history if row[4] is None]
 
-                # Send all unspent outputs (everything in the address) minus the fee
+                # Send all unspent outputs (everything in the address) minus
+                # the fee
                 inputs = []
                 for row in unspent:
                     assert len(row) == 4
@@ -765,11 +762,6 @@ class ProtocolHandler(object):
             msg['key'], callback=self.on_node_search_value
         )
 
-        # response = self.market.lookup(msg)
-        # if response:
-        #     self.log.info(response)
-        # self.send_to_client(*response)
-
     def client_query_network_for_products(self, socket_handler, msg):
 
         self.log.info("Querying for Contracts %s", msg)
@@ -793,7 +785,8 @@ class ProtocolHandler(object):
         """Currently hard-coded for testing: need to find out Installation path.
         Talk to team about right location for backup files
         they might have to be somewhere outside the installation path
-        as some OSes might not allow the modification of the installation folder
+        as some OSes might not allow the modification of the installation
+        folder
         e.g. MacOS won't allow for changes if the .app has been signed.
         and all files created by the app, have to be outside, usually at
         ~/Library/Application Support/OpenBazaar/backups ??
@@ -857,8 +850,8 @@ class ProtocolHandler(object):
             for contract in contracts:
                 self.transport.dht.iterativeFindValue(
                     contract,
-                    callback=lambda msg, key=contract: self.on_node_search_value(
-                        msg, key
+                    callback=lambda msg, key=contract: (
+                        self.on_node_search_value(msg, key)
                     )
                 )
 
@@ -869,12 +862,7 @@ class ProtocolHandler(object):
 
         if len(results):
             if 'listings' in results:
-                # data = results['data']
-                # contracts = data['contracts']
-                # signature = results['signature']
-
                 # TODO: Validate signature of listings matches data
-                # self.transport._myself.
 
                 # Go get listing metadata and then send it to the GUI
                 for contract in results['listings']:
@@ -883,15 +871,10 @@ class ProtocolHandler(object):
 
                     self.transport.dht.iterativeFindValue(
                         key,
-                        callback=lambda msg, key=key: self.on_global_search_value(
-                            msg, key
+                        callback=lambda msg, key=key: (
+                            self.on_global_search_value(msg, key)
                         )
                     )
-
-                # self.send_to_client(None, {
-                #     "type": "store_products",
-                #     "products": listings
-                # })
 
     def client_shout(self, socket_handler, msg):
         msg['uri'] = self.transport.uri
@@ -903,9 +886,6 @@ class ProtocolHandler(object):
     def on_node_search_value(self, results, key):
 
         self.log.debug('Listing Data: %s %s', results, key)
-
-        # Fix newline issue
-        # self.log.info(results_data)
 
         # Import gpg pubkey
         gpg = gnupg.GPG()
@@ -1058,7 +1038,7 @@ class ProtocolHandler(object):
             "id": random.randint(0, 1000000),
             "result": result
         }
-        self.log.debug('SENDING TO CLIENT %s', result)
+        self.log.datadump('Sending to web client: %s', result)
         if error:
             response["error"] = error
         self.handler.queue_response(response)
@@ -1074,7 +1054,7 @@ class ProtocolHandler(object):
             return False
         params = request["params"]
         # Create callback handler to write response to the socket.
-        self.log.debug('found a handler!')
+        self.log.debugv('found a handler!')
         self._handlers[command](socket_handler, params)
         return True
 
@@ -1152,10 +1132,9 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     def _check_request(request):
         return "command" in request and "id" in request and \
                "params" in request and type(request["params"]) == dict
-        # request.has_key("params") and type(request["params"]) == list
 
     def on_message(self, message):
-        self.log.info('[On Message]: %s', message)
+        self.log.datadump('Received message: %s', message)
         try:
             request = json.loads(message)
         except Exception:
