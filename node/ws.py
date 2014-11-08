@@ -17,7 +17,6 @@ from bitcoin import (
 )
 import tornado.websocket
 from twisted.internet import reactor
-from threading import Thread
 from backuptool import BackupTool, Backup, BackupJSONEncoder
 import trust
 
@@ -32,7 +31,6 @@ class ProtocolHandler(object):
         self.db = db
 
         self.transport.set_websocket_handler(self)
-        Thread(target=reactor.run, args=(False,)).start()
 
         self.all_messages = (
             'peer',
