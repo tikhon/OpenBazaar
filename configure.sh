@@ -116,7 +116,7 @@ function installUbuntu {
   sudo apt-get install alien libssl-dev python-virtualenv lintian libjs-jquery
 
   if [ ! -d "./env" ]; then
-    virtualenv env
+    virtualenv --python=python2.7 env
   fi
 
   ./env/bin/pip install -r requirements.txt
