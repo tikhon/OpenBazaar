@@ -140,7 +140,8 @@ class CryptoPeerConnection(GUIDMixin, PeerConnection):
                 'pubkey': self.transport.pubkey,
                 'uri': self.transport.uri,
                 'senderGUID': self.transport.guid,
-                'senderNick': self.transport.nickname
+                'senderNick': self.transport.nickname,
+                'v': constants.VERSION
             }),
             cb
         )

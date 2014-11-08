@@ -459,7 +459,7 @@ class ProtocolHandler(object):
 
         try:
             client = obelisk.ObeliskOfLightClient(
-                'tcp://obelisk2.airbitz.co:9091'
+                'tcp://obelisk.coinkite.com:9091'
             )
 
             seller = offer_data_json['Seller']
@@ -562,7 +562,7 @@ class ProtocolHandler(object):
 
         try:
             client = obelisk.ObeliskOfLightClient(
-                'tcp://obelisk2.airbitz.co:9091'
+                'tcp://obelisk.coinkite.com:9091'
             )
 
             seller = offer_data_json['Seller']
@@ -681,7 +681,7 @@ class ProtocolHandler(object):
 
         try:
             client = obelisk.ObeliskOfLightClient(
-                'tcp://obelisk2.airbitz.co:9091'
+                'tcp://obelisk.coinkite.com:9091'
             )
 
             script = msg['script']
