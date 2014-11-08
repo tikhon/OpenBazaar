@@ -56,7 +56,6 @@ class PeerConnection(object):
         self.socket.close(0)
 
     def send(self, data, callback):
-        data['v'] = constants.VERSION
         self.send_raw(json.dumps(data), callback)
 
     def send_raw(self, serialized, callback=None):
