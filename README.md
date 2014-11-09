@@ -1,6 +1,7 @@
 <img src="http://s27.postimg.org/5i0igk0v7/Open_Bazaar_Logo.png" width="800px"/>
 
 <img src="https://travis-ci.org/OpenBazaar/OpenBazaar.svg?branch=master" />
+[![Coverage Status](https://coveralls.io/repos/OpenBazaar/OpenBazaar/badge.png)](https://coveralls.io/r/OpenBazaar/OpenBazaar)
 
 Seed Uptime Status: (http://status.openbazaar.org/)
 
@@ -36,7 +37,7 @@ You can financially support the project by either:
 - Identity/Reputation system
 
 ## Project Status
-- *OpenBazaar* is currently in **beta 2.3**
+- *OpenBazaar* is currently in **beta 3.0**
 - New versions are scheduled for release at the end of each month
 - [Development Roadmap](https://github.com/OpenBazaar/OpenBazaar/wiki/Development-Roadmap)
 
@@ -54,16 +55,16 @@ cd OpenBazaar
 
 After running the configure.sh script you should have an OpenBazaar installation ready to go, to start run: 
 ```
-./run.sh
+./openbazaar start
 ```
 OpenBazaar will open in a random port on your default web browser. Note that it may take several minutes for OpenBazaar to completely start.
 
 Read more at the [build instructions wiki](https://github.com/OpenBazaar/OpenBazaar/wiki/Build-Instructions).
 
 ## Artwork Contributions
-![](https://github.com/OpenBazaar/OpenBazaar/blob/gh-pages/img/logo_alt1-b-h.png?raw=true)  
-contributed by Jacob Payne
-![](http://i.imgur.com/WwPUXGS.png)  
+<img src="https://blog.openbazaar.org/wp-content/uploads/2014/07/logo.png" width="500px"/>  
+contributed by Jacob Payne  
+<img src="http://i.imgur.com/WwPUXGS.png" width="500px"/>  
 contributed by Dean Masley
 
 ## Theory Work
@@ -77,6 +78,8 @@ contributed by Dean Masley
 8. [OpenBazaar Genesis Contract](https://gist.github.com/drwasho/76e1161db1e5b860598a) by Dr Washington Sanchez (arbiter), Brian Hoffman (buyer), and Samuel Patterson (seller)
 9. [A pseudonymous trust system for a decentralized anonymous marketplace](https://gist.github.com/dionyziz/e3b296861175e0ebea4b) by Dionysis Zindros
 10. [Dispute Resolution in OpenBazaar - Arbitration Market](https://gist.github.com/drwasho/405d51bd1b1a32e38145) by Dr Washington Sanchez
+11. [Notary Selection in OpenBazaar](https://gist.github.com/drwasho/a0225f5455e508095ac2) by Dr Washington Sanchez
+12. [Risk and Insurance in OpenBazaar](https://gist.github.com/drwasho/9759924342859872851e) by Dr Washington Sanchez
 
 ## Screenshots
 Here are some screenshots of the *alpha* UI so far:

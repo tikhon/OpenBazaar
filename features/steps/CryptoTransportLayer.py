@@ -1,24 +1,29 @@
+#pylint: disable=function-redefined
 from behave import given, then, when
-from tornado.testing import *
 from zmq.eventloop import ioloop
 
 from node.db_store import Obdb
 from node.setup_db import setup_db
+from node.openbazaar_daemon import OpenBazaarContext
 from node.transport import CryptoTransportLayer
-from test_util import ip_address, nickname, get_db_path
+from features.test_util import ip_address, nickname, get_db_path
 
 port = 12345
 
 
 def create_layers(context, num_layers):
     layers = []
+
     for i in range(num_layers):
-        db_path = get_db_path(i)
-        setup_db(db_path)
         # dev_mode is True because otherwise the layer's ip is set to the
         # public ip of the node
-        layers.append(CryptoTransportLayer(ip_address(i), port, i,
-                                           Obdb(db_path), dev_mode=True))
+        ob_ctx = OpenBazaarContext.create_default_instance()
+        ob_ctx.dev_mode = True
+        ob_ctx.server_ip = ip_address(i)
+        ob_ctx.server_port = port
+        db_path = get_db_path(i)
+        setup_db(db_path, ob_ctx.disable_sqlite_crypt)
+        layers.append(CryptoTransportLayer(ob_ctx, Obdb(db_path)))
     context.layers = layers
 
 

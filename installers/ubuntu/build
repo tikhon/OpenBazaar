@@ -112,8 +112,6 @@ def copy_files():
     assert_current_dir_is('output')
 
     # copy the launcher scripts and icon
-    os.system('cp ' + OB_PROJECT_DIR + '/run.sh .' + USR_SHARE_OB_DIR)
-    os.system('cp ' + OB_PROJECT_DIR + '/stop.sh .' + USR_SHARE_OB_DIR)
     os.system('cp ' + OB_PROJECT_DIR + '/requirements.txt .' + USR_SHARE_OB_DIR)
     os.system('cp ' + OB_PROJECT_DIR + '/configure.sh .' + USR_SHARE_OB_DIR)
 
@@ -135,11 +133,11 @@ def copy_files():
     os.system('gzip -9 .' + DOC_DIR + '/changelog')
 
     # make sure launcher script is executable
-    os.system('cp ../openbazaar .' + BIN_DIR)
+    os.system('cp ' + OB_PROJECT_DIR + '/openbazaar .' + BIN_DIR)
     os.system('chmod 0755 .' + BIN_DIR + '/openbazaar')
 
     # copy DEBIAN files
-    os.system('cp -R ../debian .')
+    os.system('cp -R ../DEBIAN .')
 
     # copy the desktop launcher
     os.system('cp ../openbazaar.desktop .' + APP_DIR)
@@ -149,12 +147,10 @@ def copy_files():
     # in our project because their pip scripts fail.
     os.system('cp -R ' + OB_PROJECT_DIR + '/node .' + USR_SHARE_OB_DIR + '/')
     os.system('cp -R ' + OB_PROJECT_DIR + '/html .' + USR_SHARE_OB_DIR + '/')
-    os.system('cp -R ' + OB_PROJECT_DIR + '/pysqlcipher .' + USR_SHARE_OB_DIR + '/')
 
     # fix permissions to avoid lintian errors
     os.system('chmod -R 0644 .' + USR_SHARE_OB_DIR + '/node')
     os.system('chmod -R 0644 .' + USR_SHARE_OB_DIR + '/html')
-    os.system('chmod -R 0644 .' + USR_SHARE_OB_DIR + '/pysqlcipher')
     os.system('find .' + USR_SHARE_OB_DIR + ' -type d | xargs chmod 0755')
     os.system('find .' + USR_SHARE_OB_DIR + ' | egrep "(\.sh)" | xargs chmod 0755')
 
@@ -177,7 +173,7 @@ def copy_files():
 def build_deb_package(packageName):
     '''builds the .deb'''
     assert_current_dir_is('ubuntu')
-    os.system('fakeroot dpkg -D1 -b output ' + packageName)
+    os.system('dpkg -D1 -b output ' + packageName)
 
 
 def build_rpm_package(packageName):
@@ -192,9 +188,7 @@ if __name__ == '__main__':
 
     cleanup()
     delete_previous_package(dotDebName)
-
     create_folder_structure()
     copy_files()
-
     build_deb_package(dotDebName)
     build_rpm_package(dotDebName)

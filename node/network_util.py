@@ -1,27 +1,36 @@
-from random import randint
-import re
-import socket
-import struct
+import sys
+
+import IPy
+import requests
+import stun
 
 
-def is_local_tcp_port_listening(port):
-    r = -1
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        r = s.connect_ex(('127.0.01', port))
-        s.close()
-    except:
-        pass
-    return r == 0
+# List taken from natvpn project and tested manually.
+# NOTE: This needs periodic updating.
+_STUN_SERVERS = (
+    'stun.ekiga.net',
+    'stun.ideasip.com',
+    'stun.voiparound.com',
+    'stun.voipbuster.com',
+    'stun.voipstunt.com',
+    'stun.voxgratia.org'
+)
 
 
-def get_random_free_tcp_port(min_port_number=1025, max_port_number=49151):
-    while True:
-        port = randint(min_port_number, max_port_number)
-        print "Checking if port", port, "is free ..."
-        if not is_local_tcp_port_listening(port):
-            print "Port", port, "is free!"
-            return port
+def set_stun_servers(servers=_STUN_SERVERS):
+    """Manually set the list of good STUN servers."""
+    stun.stun_servers_list = tuple(servers)
+
+
+def get_NAT_status(stun_host=None):
+    """
+    Given a server hostname, initiate a STUN request to it;
+    and return the response in the form of a dict.
+    """
+    response = stun.get_ip_info(stun_host=stun_host, source_port=0)
+    return {'nat_type': response[0],
+            'external_ip': response[1],
+            'external_port': response[2]}
 
 
 def is_loopback_addr(addr):
@@ -36,40 +45,65 @@ def is_valid_protocol(protocol):
     return protocol == 'tcp'
 
 
-def is_valid_ip_address(addr):
-    try:
-        socket.inet_aton(addr)
-        return True
-    except socket.error:
-        return False
-
-
 def is_private_ip_address(addr):
-    if is_loopback_addr(addr):
-        return True
-    if not is_valid_ip_address(addr):
-        return False
-    # http://stackoverflow.com/questions/691045/how-do-you-determine-if-an-ip-address-is-private-in-python
-    f = struct.unpack('!I', socket.inet_pton(socket.AF_INET, addr))[0]
-    private = (
-        # 127.0.0.0,   255.0.0.0   http://tools.ietf.org/html/rfc3330
-        [2130706432, 4278190080],
-        # 192.168.0.0, 255.255.0.0 http://tools.ietf.org/html/rfc1918
-        [3232235520, 4294901760],
-        # 172.16.0.0,  255.240.0.0 http://tools.ietf.org/html/rfc1918
-        [2886729728, 4293918720],
-        # 10.0.0.0,    255.0.0.0   http://tools.ietf.org/html/rfc1918
-        [167772160, 4278190080],
-    )
-    for net in private:
-        if f & net[1] == net[0]:
-            return True
-    return False
+    return is_loopback_addr(addr) or IPy.IP(addr).iptype() != 'PUBLIC'
 
 
-def uri_parts(uri):
-    m = re.match(r"(\w+)://([\w\.]+):(\d+)", uri)
-    if m is not None:
-        return m.group(1), m.group(2), m.group(3)
+def get_my_ip():
+    try:
+        r = requests.get('https://icanhazip.com')
+        return r.text.strip()
+    except (AttributeError, requests.RequestException) as e:
+        print '[Requests] error: %s' % e
+    return None
+
+
+def is_ipv6_address(ip):
+    return IPy.IP(ip).version() == 6
+
+
+def get_peer_url(address, port, protocol='tcp'):
+    """
+    Return a URL which can be used by ZMQ.
+
+    @param address: An IPv4 address, an IPv6 address or a DNS name.
+    @type address: str
+
+    @param port: The port that will be used to connect to the peer
+    @type port: int
+
+    @param protocol: The connection protocol
+    @type protocol: str
+
+    @rtype: str
+    """
+    try:
+        # is_ipv6_address will throw an exception for a DNS name
+        is_ipv6 = is_ipv6_address(address)
+    except ValueError:
+        is_ipv6 = False
+
+    if is_ipv6:
+        # An IPv6 address must be enclosed in brackets.
+        return '%s://[%s]:%s' % (protocol, address, port)
     else:
-        raise RuntimeError('URI is not valid')
+        return '%s://%s:%s' % (protocol, address, port)
+
+
+def test_stun_servers(servers=_STUN_SERVERS):
+    """Check responses of the listed STUN servers."""
+    for s in servers:
+        print 'Probing', s, '...',
+        sys.stdout.flush()
+        status = get_NAT_status(s)
+        if status['external_ip'] is None or status['external_port'] is None:
+            print 'FAIL'
+        else:
+            print 'OK'
+
+
+def main():
+    test_stun_servers()
+
+if __name__ == '__main__':
+    main()

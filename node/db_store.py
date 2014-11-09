@@ -1,12 +1,3 @@
-#!/usr/bin/env python
-#
-# This library is free software, distributed under the terms of
-# the GNU Lesser General Public License Version 3, or any later version.
-# See the COPYING file included in this archive
-#
-# The docstrings in this module contain epytext markup; API documentation
-# may be created by processing this file with epydoc: http://epydoc.sf.net
-
 import logging
 from pysqlcipher import dbapi2 as sqlite
 
@@ -35,8 +26,9 @@ class Obdb(object):
 
         if not self.disable_sqlite_crypt:
             # Use PRAGMA key to encrypt / decrypt database.
-            cur = self.con.cursor()
-            cur.execute("PRAGMA key = 'passphrase';")
+            with self.con:
+                cur = self.con.cursor()
+                cur.execute("PRAGMA key = 'passphrase';")
 
     def _disconnectFromDb(self):
         """ Close the db connection
@@ -70,7 +62,8 @@ class Obdb(object):
         """ This method attempts to grab the record first. If it fails to find it,
         it will create it.
         @param table: The table to search to
-        @param get_where_dict: A dictionary with the WHERE/SET clauses
+        @param where_dict: A dictionary with the WHERE/SET clauses
+        @param data_dict: A dictionary with the SET clauses
         """
         if not data_dict:
             data_dict = where_dict
@@ -80,12 +73,15 @@ class Obdb(object):
             self.insertEntry(table, data_dict)
         return self.selectEntries(table, where_dict)[0]
 
-    def updateEntries(self, table, where_dict, set_dict, operator="AND"):
+    def updateEntries(self, table, set_dict, where_dict=None, operator="AND"):
         """ A wrapper for the SQL UPDATE operation
         @param table: The table to search to
-        @param whereDict: A dictionary with the WHERE clauses
-        @param setDict: A dictionary with the SET clauses
+        @param set_dict: A dictionary with the SET clauses
+        @param where_dict: A dictionary with the WHERE clauses
         """
+        if where_dict is None:
+            where_dict = {'"1"': '1'}
+
         self._connectToDb()
         with self.con:
             cur = self.con.cursor()
@@ -112,16 +108,17 @@ class Obdb(object):
                 where_part.append("%s %s ?" % (key, sign))
             operator = " " + operator + " "
             where_part = operator.join(where_part)
-            query = "UPDATE %s SET %s WHERE %s" \
-                    % (table, set_part, where_part)
-            self.log.debug('query: %s' % query)
+            query = "UPDATE %s SET %s WHERE %s" % (
+                table, set_part, where_part
+            )
+            self.log.debug('query: %s', query)
             cur.execute(query, tuple(sets + wheres))
         self._disconnectFromDb()
 
     def insertEntry(self, table, update_dict):
         """ A wrapper for the SQL INSERT operation
         @param table: The table to search to
-        @param updateDict: A dictionary with the values to set
+        @param update_dict: A dictionary with the values to set
         """
         self._connectToDb()
         with self.con:
@@ -139,25 +136,27 @@ class Obdb(object):
                 setfield_part.append("?")
             updatefield_part = ",".join(updatefield_part)
             setfield_part = ",".join(setfield_part)
-            query = "INSERT INTO %s(%s) VALUES(%s)"  \
-                    % (table, updatefield_part, setfield_part)
+            query = "INSERT INTO %s(%s) VALUES(%s)" % (
+                table, updatefield_part, setfield_part
+            )
             cur.execute(query, tuple(sets))
             lastrowid = cur.lastrowid
-            self.log.debug("query: %s " % query)
+            self.log.debug("query: %s", query)
         self._disconnectFromDb()
         if lastrowid:
             return lastrowid
 
-    def selectEntries(self, table, where_dict=None, operator="AND", order_field="id", order="ASC", limit=None, limit_offset=None, select_fields="*"):
+    def selectEntries(self, table, where_dict=None, operator="AND", order_field="id",
+                      order="ASC", limit=None, limit_offset=None, select_fields="*"):
         """
         A wrapper for the SQL SELECT operation. It will always return all the
         attributes for the selected rows.
         @param table: The table to search
-        @param whereDict: A dictionary with the WHERE clauses.
-                          If ommited it will return all the rows of the table.
+        @param where_dict: A dictionary with the WHERE clauses.
+                           If ommited it will return all the rows of the table.
         """
         if where_dict is None:
-            where_dict = {"\"1\"": "1"}
+            where_dict = {'"1"': '1'}
         self._connectToDb()
         with self.con:
             cur = self.con.cursor()
@@ -180,9 +179,10 @@ class Obdb(object):
                     limit_clause = ""
             operator = " " + operator + " "
             where_part = operator.join(where_part)
-            query = "SELECT * FROM %s WHERE %s ORDER BY %s %s %s" \
-                    % (table, where_part, order_field, order, limit_clause)
-            self.log.debug("query: %s " % query)
+            query = "SELECT * FROM %s WHERE %s ORDER BY %s %s %s" % (
+                table, where_part, order_field, order, limit_clause
+            )
+            self.log.debug("query: %s", query)
             cur.execute(query, tuple(wheres))
             rows = cur.fetchall()
         self._disconnectFromDb()
@@ -193,11 +193,11 @@ class Obdb(object):
         A wrapper for the SQL DELETE operation. It will always return all the
         attributes for the selected rows.
         @param table: The table to search
-        @param whereDict: A dictionary with the WHERE clauses.
-                          If ommited it will delete all the rows of the table.
+        @param where_dict: A dictionary with the WHERE clauses.
+                           If ommited it will delete all the rows of the table.
         """
         if where_dict is None:
-            where_dict = {"\"1\"": "1"}
+            where_dict = {'"1"': '1'}
 
         self._connectToDb()
         with self.con:
@@ -215,8 +215,9 @@ class Obdb(object):
                 where_part.append("%s %s ?" % (key, sign))
             operator = " " + operator + " "
             where_part = operator.join(where_part)
-            query = "DELETE FROM %s WHERE %s" \
-                    % (table, where_part)
-            self.log.debug('Query: %s' % query)
+            query = "DELETE FROM %s WHERE %s" % (
+                table, where_part
+            )
+            self.log.debug('Query: %s', query)
             cur.execute(query, dels)
         self._disconnectFromDb()

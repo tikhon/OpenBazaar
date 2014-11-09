@@ -1,20 +1,30 @@
-import argparse
+import logging
+import json
+import multiprocessing
+import os
+import signal
+from threading import Lock
+import time
+
+import tornado.httpserver
+import tornado.netutil
 import tornado.web
 from zmq.eventloop import ioloop
-ioloop.install()
-
-from transport import CryptoTransportLayer
-from db_store import Obdb
-from market import Market
-from ws import WebSocketHandler
-import logging
-import signal
 from threading import Thread
 from twisted.internet import reactor
-from util import open_default_webbrowser
-from network_util import get_random_free_tcp_port
+
+from db_store import Obdb
+from market import Market
+from transport import CryptoTransportLayer
 import upnp
-import os
+from util import open_default_webbrowser, is_mac
+from ws import WebSocketHandler
+
+if is_mac():
+    from util import osx_check_dyld_library_path
+    osx_check_dyld_library_path()
+
+ioloop.install()
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -28,266 +38,336 @@ class OpenBazaarStaticHandler(tornado.web.StaticFileHandler):
         self.set_header("X-Content-Type-Options", "nosniff")
 
 
+class OpenBazaarContext(object):
+    """
+    This Object holds all of the runtime parameters
+    necessary to start an OpenBazaar instance.
+
+    This object is convenient to pass on method interfaces,
+    and reduces issues of API inconsistencies (as in the order
+    in which parameters are passed, which can cause bugs)
+    """
+
+    def __init__(self,
+                 nat_status,
+                 server_ip,
+                 server_port,
+                 http_ip,
+                 http_port,
+                 db_path,
+                 log_path,
+                 log_level,
+                 market_id,
+                 bm_user,
+                 bm_pass,
+                 bm_port,
+                 seeds,
+                 seed_mode,
+                 dev_mode,
+                 dev_nodes,
+                 disable_upnp,
+                 disable_stun_check,
+                 disable_open_browser,
+                 disable_sqlite_crypt,
+                 enable_ip_checker):
+        self.nat_status = nat_status
+        self.server_ip = server_ip
+        self.server_port = server_port
+        self.http_ip = http_ip
+        self.http_port = http_port
+        self.db_path = db_path
+        self.log_path = log_path
+        self.log_level = log_level
+        self.market_id = market_id
+        self.bm_user = bm_user
+        self.bm_pass = bm_pass
+        self.bm_port = bm_port
+        self.seeds = seeds
+        self.seed_mode = seed_mode
+        self.dev_mode = dev_mode
+        self.dev_nodes = dev_nodes
+        self.disable_upnp = disable_upnp
+        self.disable_stun_check = disable_stun_check
+        self.disable_open_browser = disable_open_browser
+        self.disable_sqlite_crypt = disable_sqlite_crypt
+        self.enable_ip_checker = enable_ip_checker
+
+        # to deduct up-time, and (TODO) average up-time
+        # time stamp in (non-local) Coordinated Universal Time format.
+        self.started_utc_timestamp = long(time.time())
+
+    def __repr__(self):
+        r = {"server_ip": self.server_ip,
+             "server_port": self.server_port,
+             "http_ip": self.http_ip,
+             "http_port": self.http_port,
+             "log_path": self.log_path,
+             "market_id": self.market_id,
+             "bm_user": self.bm_user,
+             "bm_pass": self.bm_pass,
+             "bm_port": self.bm_port,
+             "seeds": self.seeds,
+             "seed_mode": self.seed_mode,
+             "dev_mode": self.dev_mode,
+             "dev_nodes": self.dev_nodes,
+             "log_level": self.log_level,
+             "db_path": self.db_path,
+             "disable_upnp": self.disable_upnp,
+             "disable_open_browser": self.disable_open_browser,
+             "disable_sqlite_crypt": self.disable_sqlite_crypt,
+             "enable_ip_checker": self.enable_ip_checker,
+             "started_utc_timestamp": self.started_utc_timestamp,
+             "uptime_in_secs": (long(time.time()) -
+                                long(self.started_utc_timestamp))}
+
+        return json.dumps(r).replace(", ", ",\n  ")
+
+    @staticmethod
+    def get_defaults():
+        return {'market_id': 1,
+                'server_ip': '127.0.0.1',
+                'server_port': 12345,
+                'log_dir': 'logs',
+                'log_file': 'production.log',
+                'dev_log_file': 'development-{0}.log',
+                'db_dir': 'db',
+                'db_file': 'ob.db',
+                'dev_db_file': 'ob-dev-{0}.db',
+                'dev_mode': False,
+                'dev_nodes': 3,
+                'seed_mode': False,
+                'seeds': [
+                    'seed.openbazaar.org',
+                    'seed2.openbazaar.org',
+                    'seed.openlabs.co',
+                    'us.seed.bizarre.company',
+                    'eu.seed.bizarre.company'
+                ],
+                'disable_upnp': False,
+                'disable_stun_check': False,
+                'disable_open_browser': False,
+                'disable_sqlite_crypt': False,
+                'log_level': 30,
+                # CRITICAL=50, ERROR=40, WARNING=30, DEBUG=10, DATADUMP=5, NOTSET=0
+                'http_ip': '127.0.0.1',
+                'http_port': 0,
+                'bm_user': None,
+                'bm_pass': None,
+                'bm_port': -1,
+                'enable_ip_checker': False,
+                'config_file': None}
+
+    @staticmethod
+    def create_default_instance():
+        defaults = OpenBazaarContext.get_defaults()
+        return OpenBazaarContext(
+            None,
+            server_ip=defaults['server_ip'],
+            server_port=defaults['server_port'],
+            http_ip=defaults['http_ip'],
+            http_port=defaults['http_port'],
+            db_path=os.path.join(defaults['db_dir'], defaults['db_file']),
+            log_path=os.path.join(defaults['log_dir'], defaults['log_file']),
+            log_level=defaults['log_level'],
+            market_id=defaults['market_id'],
+            bm_user=defaults['bm_user'],
+            bm_pass=defaults['bm_pass'],
+            bm_port=defaults['bm_port'],
+            seeds=defaults['seeds'],
+            seed_mode=defaults['seed_mode'],
+            dev_mode=defaults['dev_mode'],
+            dev_nodes=defaults['dev_nodes'],
+            disable_upnp=defaults['disable_upnp'],
+            disable_stun_check=defaults['disable_stun_check'],
+            disable_open_browser=defaults['disable_open_browser'],
+            disable_sqlite_crypt=defaults['disable_sqlite_crypt'],
+            enable_ip_checker=defaults['enable_ip_checker']
+        )
+
+
 class MarketApplication(tornado.web.Application):
-    def __init__(self, market_ip, market_port, market_id=1,
-                 bm_user=None, bm_pass=None, bm_port=None, seed_peers=None,
-                 seed_mode=0, dev_mode=False, db_path='db/ob.db', disable_sqlite_crypt=False, disable_ip_update=False):
-        if seed_peers is None:
-            seed_peers = []
-
-        db = Obdb(db_path, disable_sqlite_crypt)
-
-        self.transport = CryptoTransportLayer(market_ip,
-                                              market_port,
-                                              market_id,
-                                              db,
-                                              bm_user,
-                                              bm_pass,
-                                              bm_port,
-                                              seed_mode,
-                                              dev_mode,
-                                              disable_ip_update)
-
+    def __init__(self, ob_ctx):
+        self.shutdown_mutex = Lock()
+        self.ob_ctx = ob_ctx
+        db = Obdb(ob_ctx.db_path, ob_ctx.disable_sqlite_crypt)
+        self.transport = CryptoTransportLayer(ob_ctx, db)
         self.market = Market(self.transport, db)
-
-        # UNUSED
-        # def post_joined():
-        #     self.transport.dht._refreshNode()
-        #     self.market.republish_contracts()
-
-        peers = seed_peers if seed_mode == 0 else []
-        self.transport.join_network(peers)
+        self.upnp_mapper = None
 
         Thread(target=reactor.run, args=(False,)).start()
+
+        peers = ob_ctx.seeds if not ob_ctx.seed_mode else []
+        self.transport.join_network(peers)
 
         handlers = [
             (r"/", MainHandler),
             (r"/main", MainHandler),
             (r"/html/(.*)", OpenBazaarStaticHandler, {'path': './html'}),
             (r"/ws", WebSocketHandler,
-                dict(transport=self.transport, market_application=self, db=db))
+             dict(transport=self.transport, market_application=self, db=db))
         ]
 
         # TODO: Move debug settings to configuration location
         settings = dict(debug=True)
-        tornado.web.Application.__init__(self, handlers, **settings)
+        super(MarketApplication, self).__init__(handlers, **settings)
+
+    def start_app(self):
+        # If self.ob_ctx.http_port is 0, the kernel is queried for a port.
+        sockets = tornado.netutil.bind_sockets(
+            self.ob_ctx.http_port,
+            address=self.ob_ctx.http_ip
+        )
+        server = tornado.httpserver.HTTPServer(self)
+        server.add_sockets(sockets)
+
+        self.ob_ctx.http_port = sockets[0].getsockname()[1]
+
+        if not self.ob_ctx.disable_upnp:
+            self.setup_upnp_port_mappings(self.ob_ctx.server_port)
+        else:
+            print "MarketApplication.start_app(): Disabling upnp setup"
 
     def get_transport(self):
         return self.transport
 
-    def setup_upnp_port_mappings(self, http_port, p2p_port):
-        upnp.PortMapper.DEBUG = False
-        print "Setting up UPnP Port Map Entry..."
-        # TODO: Add some setting whether or not to use UPnP
-        # if Settings.get(Settings.USE_UPNP_PORT_MAPPINGS):
-        self.upnp_mapper = upnp.PortMapper()
-        # TODO: Add some setting whether or not to clean all previous port
-        # mappings left behind by us
-        # if Settings.get(Settings.CLEAN_UPNP_PORT_MAPPINGS_ON_START):
-        #    upnp_mapper.cleanMyMappings()
+    def setup_upnp_port_mappings(self, p2p_port):
+        result = False
 
-        # for now let's always clean mappings every time.
-        self.upnp_mapper.clean_my_mappings(p2p_port)
-        # result_http_port_mapping = self.upnp_mapper.add_port_mapping(http_port,
-        #                                                             http_port)
-        # print ("UPnP HTTP Port Map configuration done (%s -> %s) => %s" %
-        #        (str(http_port), str(http_port), str(result_http_port_mapping)))
+        if not self.ob_ctx.disable_upnp:
+            upnp.PortMapper.DEBUG = False
+            print "Setting up UPnP Port Map Entry..."
+            self.upnp_mapper = upnp.PortMapper()
+            self.upnp_mapper.clean_my_mappings(p2p_port)
 
-        result_tcp_p2p_mapping = self.upnp_mapper.add_port_mapping(p2p_port,
-                                                                   p2p_port)
-        print ("UPnP TCP P2P Port Map configuration done (%s -> %s) => %s" %
-               (str(p2p_port), str(p2p_port), str(result_tcp_p2p_mapping)))
+            result_tcp_p2p_mapping = self.upnp_mapper.add_port_mapping(
+                p2p_port, p2p_port
+            )
+            print "UPnP TCP P2P Port Map configuration done ",
+            print "(%s -> %s) => %s" % (
+                p2p_port, p2p_port, result_tcp_p2p_mapping
+            )
 
-        result_udp_p2p_mapping = self.upnp_mapper.add_port_mapping(p2p_port,
-                                                                   p2p_port,
-                                                                   'UDP')
-        print ("UPnP UDP P2P Port Map configuration done (%s -> %s) => %s" %
-               (str(p2p_port), str(p2p_port), str(result_udp_p2p_mapping)))
+            result_udp_p2p_mapping = self.upnp_mapper.add_port_mapping(
+                p2p_port, p2p_port, 'UDP'
+            )
+            print "UPnP UDP P2P Port Map configuration done ",
+            print "(%s -> %s) => %s" % (
+                p2p_port, p2p_port, result_udp_p2p_mapping
+            )
 
-        result = result_tcp_p2p_mapping and result_udp_p2p_mapping
-        if not result:
-            print "Warning: UPnP was not setup correctly. Try doing a port forward on %s and start the node again with -j" % p2p_port
+            result = result_tcp_p2p_mapping and result_udp_p2p_mapping
+            if not result:
+                print "Warning: UPnP was not setup correctly. ",
+                print "Ports could not be automatically mapped."
 
         return result
 
     def cleanup_upnp_port_mapping(self):
-        try:
-            if self.upnp_mapper is not None:
-                print "Cleaning UPnP Port Mapping -> ", \
-                    self.upnp_mapper.clean_my_mappings(self.transport.port)
-        except AttributeError:
-            print "[openbazaar] MarketApplication.clean_upnp_port_mapping() failed!"
+        if not self.ob_ctx.disable_upnp:
+            try:
+                if self.upnp_mapper is not None:
+                    print "Cleaning UPnP Port Mapping -> ", \
+                        self.upnp_mapper.clean_my_mappings(self.transport.port)
+            except AttributeError:
+                print (
+                    "[openbazaar] "
+                    "MarketApplication.clean_upnp_port_mapping() failed!"
+                )
 
     def shutdown(self, x=None, y=None):
+        self.shutdown_mutex.acquire()
         print "MarketApplication.shutdown!"
-        locallogger = logging.getLogger(
+        log = logging.getLogger(
             '[%s] %s' % (self.market.market_id, 'root')
         )
-        locallogger.info("Received TERMINATE, exiting...")
+        log.info("Received TERMINATE, exiting...")
 
-        # application.get_transport().broadcast_goodbye()
         self.cleanup_upnp_port_mapping()
         tornado.ioloop.IOLoop.instance().stop()
 
         self.transport.shutdown()
+        self.shutdown_mutex.release()
         os._exit(0)
 
 
-def start_node(my_market_ip,
-               my_market_port,
-               http_ip,
-               http_port,
-               log_file,
-               market_id,
-               bm_user=None,
-               bm_pass=None,
-               bm_port=None,
-               seed_peers=None,
-               seed_mode=0,
-               dev_mode=False,
-               log_level=None,
-               database='db/ob.db',
-               disable_upnp=False,
-               disable_open_browser=False,
-               disable_sqlite_crypt=False,
-               disable_ip_update=False):
-    if seed_peers is None:
-        seed_peers = []
+def start_io_loop():
+    if not tornado.ioloop.IOLoop.instance():
+        ioloop.install()
 
     try:
-        logging.basicConfig(
-            level=int(log_level),
-            format=u'%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            filename=log_file
-        )
-        logging._defaultFormatter = logging.Formatter(u'%(message)s')
-        locallogger = logging.getLogger('[%s] %s' % (market_id, 'root'))
+        tornado.ioloop.IOLoop.instance().start()
+    except Exception as e:
+        print "openbazaar::start_io_loop Exception:", e
+        raise
+
+
+def create_logger(ob_ctx):
+    logger = None
+    try:
+        logger = logging.getLogger()
+        logger.setLevel(int(ob_ctx.log_level))
 
         handler = logging.handlers.RotatingFileHandler(
-            log_file,
+            ob_ctx.log_path,
             encoding='utf-8',
             maxBytes=50000000,
             backupCount=1
         )
-        locallogger.addHandler(handler)
+        logFormat = logging.Formatter(
+            u'%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(logFormat)
+        logger.addHandler(handler)
+
+        logging.addLevelName(5, "DATADUMP")
+
+        def datadump(self, message, *args, **kwargs):
+            if self.isEnabledFor(5):
+                self._log(5, message, args, **kwargs)
+
+        logging.Logger.datadump = datadump
+
     except Exception as e:
         print "Could not setup logger, continuing: ", e.message
+    return logger
 
-    application = MarketApplication(my_market_ip,
-                                    my_market_port,
-                                    market_id,
-                                    bm_user,
-                                    bm_pass,
-                                    bm_port,
-                                    seed_peers,
-                                    seed_mode,
-                                    dev_mode,
-                                    database,
-                                    disable_sqlite_crypt,
-                                    disable_ip_update)
 
-    error = True
-    p2p_port = my_market_port
+def log_openbazaar_start(log, ob_ctx):
+    log.info("Started OpenBazaar Web App at http://%s:%s" %
+             (ob_ctx.http_ip, ob_ctx.http_port))
+    print "Started OpenBazaar Web App at http://%s:%s" % (ob_ctx.http_ip, ob_ctx.http_port)
 
-    if http_port == -1:
-        http_port = get_random_free_tcp_port(8889, 8988)
 
-    while error:
-        try:
-            application.listen(http_port, http_ip)
-            error = False
-        except:
-            http_port += 1
+def attempt_browser_open(ob_ctx):
+    if not ob_ctx.disable_open_browser:
+        open_default_webbrowser(
+            'http://%s:%s' % (ob_ctx.http_ip, ob_ctx.http_port))
 
-    if not disable_upnp:
-        application.setup_upnp_port_mappings(http_port, p2p_port)
-    else:
-        print "Disabling upnp setup"
 
-    locallogger.info("Started OpenBazaar Web App at http://%s:%s" %
-                     (http_ip, http_port))
-
-    print "Started OpenBazaar Web App at http://%s:%s" % (http_ip, http_port)
-    print "Use ./stop.sh to stop"
-
-    if not disable_open_browser:
-        open_default_webbrowser('http://%s:%s' % (http_ip, http_port))
-
+def setup_signal_handlers(application):
     try:
         signal.signal(signal.SIGTERM, application.shutdown)
     except ValueError:
-        # not the main thread
         pass
 
-    if not tornado.ioloop.IOLoop.instance():
-        ioloop.install()
-    else:
-        try:
-            tornado.ioloop.IOLoop.instance().start()
-        except Exception as e:
-            pass
+
+def node_starter(ob_ctxs):
+    # This is the target for the the Process which
+    # will spawn the children processes that spawn
+    # the actual OpenBazaar instances.
+
+    for ob_ctx in ob_ctxs:
+        p = multiprocessing.Process(
+            target=start_node, args=(ob_ctx,),
+            name="Process::openbazaar_daemon::target(start_node)")
+        p.daemon = False  # python has to wait for this user thread to end.
+        p.start()
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("my_market_ip")
-    parser.add_argument("-p", "--my_market_port",
-                        type=int, default=12345)
-    # default secure behavior is to keep HTTP port private
-    parser.add_argument("-k", "--http_ip", default="127.0.0.1")
-    parser.add_argument("-q", "--http_port", type=int, default=-1)
-    parser.add_argument("-l", "--log_file",
-                        default='logs/production.log')
-    parser.add_argument("-u", "--market_id",
-                        default=1)
-    parser.add_argument("-S", "--seed_peers",
-                        nargs='*', default=[])
-    parser.add_argument("-s", "--seed_mode",
-                        default=0)
-    parser.add_argument("-d", "--dev_mode",
-                        action='store_true')
-    parser.add_argument("--database",
-                        default='db/ob.db', help="Database filename")
-    parser.add_argument("--bmuser",
-                        default='username', help="Bitmessage instance user")
-    parser.add_argument("--bmpass",
-                        default='password', help="Bitmessage instance pass")
-    parser.add_argument("--bmport",
-                        default='8442', help="Bitmessage instance RPC port")
-    parser.add_argument("--log_level",
-                        default=10, help="Numeric value for logging level")
-    parser.add_argument("--disable_upnp",
-                        action='store_true')
-    parser.add_argument("--disable_open_browser",
-                        action='store_true',
-                        default=False)
-    parser.add_argument("--disable_sqlite_crypt",
-                        action='store_true',
-                        default=False)
-    parser.add_argument("--disable-ip-update",
-                        action='store_true',
-                        default=False)
-
-    args = parser.parse_args()
-    start_node(args.my_market_ip,
-               args.my_market_port,
-               args.http_ip,
-               args.http_port,
-               args.log_file,
-               args.market_id,
-               args.bmuser,
-               args.bmpass,
-               args.bmport,
-               args.seed_peers,
-               args.seed_mode,
-               args.dev_mode,
-               args.log_level,
-               args.database,
-               args.disable_upnp,
-               args.disable_open_browser,
-               args.disable_sqlite_crypt,
-               args.disable_ip_update)
-
-# Run this if executed directly
-if __name__ == "__main__":
-    main()
+def start_node(ob_ctx):
+    logger = create_logger(ob_ctx)
+    application = MarketApplication(ob_ctx)
+    setup_signal_handlers(application)
+    application.start_app()
+    log_openbazaar_start(logger, ob_ctx)
+    attempt_browser_open(ob_ctx)
+    start_io_loop()

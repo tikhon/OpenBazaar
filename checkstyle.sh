@@ -17,7 +17,10 @@ function python_check() {
     fi
 
     count=0;
-    for file in $(find . -iname "*.py" -not -path "./env/*"|grep -v pybitmessage|grep -v pysqlcipher); do
+    for file in $(find . -name "*.py" \
+        -not -path "./env/*" \
+        -not -path "./html/bower_components/*" \
+        -not -path "./pybitmessage/*"); do
         if ! $PYLINT --rcfile .pylintrc $file; then
             ERR=true
         fi
@@ -84,10 +87,14 @@ js)
 exc)
     execute_bit_check
     ;;
+nl)
+    new_line_check
+    ;;
 *)
     python_check
     js_check
     execute_bit_check
+    new_line_check
 esac
 
 if $ERR ; then

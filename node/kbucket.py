@@ -1,22 +1,29 @@
 import logging
 
-from six import string_types
 import constants
+import guid
 
 
 class BucketFull(Exception):
     """Raised when the bucket is full."""
+    pass
 
 
 class KBucket(object):
     """FILLME"""
 
-    def __init__(self, rangeMin, rangeMax, market_id=1):
+    def __init__(self, rangeMin, rangeMax, market_id):
         """
-        @param rangeMin: The lower boundary for the range in the 160-bit ID
-                         space covered by this k-bucket
+        Initialize a new KBucket with a range and a market_id.
+
+        @param rangeMin: The lower boundary for the range in the ID space
+                         covered by this KBucket.
+        @type: int
+
         @param rangeMax: The upper boundary for the range in the ID space
-                         covered by this k-bucket
+                         covered by this KBucket.
+        @type: int
+
         @param market_id: FILLME
         """
 
@@ -24,22 +31,33 @@ class KBucket(object):
         self.rangeMin = rangeMin
         self.rangeMax = rangeMax
         self.contacts = []
+        self.market_id = market_id
 
         self.log = logging.getLogger(
             '[%s] %s' % (market_id, self.__class__.__name__)
         )
 
+    def __len__(self):
+        return len(self.contacts)
+
+    def __iter__(self):
+        return iter(self.contacts)
+
     def addContact(self, contact):
         """
-        Add contact to _contact list in the right order. This will move the
-        contact to the end of the k-bucket if it is already present.
+        Add a contact to the contact list.
 
-        @raise node.kbucket.BucketFull: Raised when the bucket is full and
-                                        the contact isn't already in the bucket
+        The new contact is always appended to the contact list after removing
+        any prior occurences of the same contact.
 
-        @param contact: The contact to add
-        @type contact: p2p.PeerConnection
+        @param contact: The ID of the contact to add.
+        @type contact: guid.GUIDMixin or str or unicode
+
+        @raise node.kbucket.BucketFull: The bucket is full and the contact
+                                        to add is not already in it.
         """
+        if isinstance(contact, basestring):
+            contact = guid.GUIDMixin(contact)
         try:
             # Assume contact exists. Attempt to remove the old one...
             self.contacts.remove(contact)
@@ -61,33 +79,41 @@ class KBucket(object):
                 raise BucketFull('No space in bucket to insert contact')
 
     def getContact(self, contactID):
-        """Get the contact with the specified node ID."""
-        self.log.debug('[getContact] %s' % contactID)
+        """
+        Return the contact with the specified ID or None if not present.
+
+        @param contactID: The ID to search.
+        @type contact: guid.GUIDMixin or str or unicode
+
+        @rtype: guid.GUIDMixin or None
+        """
+        self.log.debug('[getContact] %s', contactID)
         for contact in self.contacts:
-            if contact.guid == contactID:
-                self.log.debug('[getContact] Found %s' % contact)
+            if contact == contactID:
+                self.log.debug('[getContact] Found %s', contact)
                 return contact
         self.log.debug('[getContact] No Results')
+        return None
 
     def getContacts(self, count=-1, excludeContact=None):
         """
-        Returns a list containing up to the first count number of contacts
+        Return a list containing up to the first `count` number of contacts.
 
-        @param count: The amount of contacts to return (if 0 or less, return
-                      all contacts)
+        @param count: The amount of contacts to return;
+                      if 0 or less, return all contacts.
         @type count: int
         @param excludeContact: A contact to exclude; if this contact is in
                                the list of returned values, it will be
-                               discarded before returning. If a C{str} is
+                               discarded before returning. If a str is
                                passed as this argument, it must be the
                                contact's ID.
-        @type excludeContact: node.contact.Contact or str (GUID)
+        @type excludeContact: guid.GUIDMixin or str or unicode
 
-        @raise IndexError: If the number of requested contacts is too large
-
-        @return: Return up to the first count number of contacts in a list.
-                 If no contacts are present, return empty list.
-        @rtype: list
+        @return: The first `count` contacts in the contact list.
+                 This amount is capped by the available contacts
+                 and the bucket size, of course. If no contacts
+                 are present, an empty list is returned.
+        @rtype:  list of guid.GUIDMixin
         """
 
         currentLen = len(self)
@@ -102,50 +128,46 @@ class KBucket(object):
         # Return no more contacts than bucket size.
         count = min(count, constants.k)
 
-        contactList = self.contacts[0:count]
+        contactList = self.contacts[:count]
         if excludeContact is not None:
             try:
+                # NOTE: If the excludeContact is removed, the resulting
+                # list has one less contact than expected. Not sure if
+                # this is a bug.
                 contactList.remove(excludeContact)
             except ValueError:
                 self.log.debug(
                     '[kbucket.getContacts() warning] '
-                    'tried to exclude non-existing contact '
-                    '(%s)' % excludeContact
+                    'tried to exclude non-existing contact (%s)',
+                    excludeContact
                 )
         return contactList
 
     def removeContact(self, contact):
         """
-        Remove given contact from list
+        Remove given contact from contact list.
 
-        @param contact: The contact to remove, or a string containing the
-                        contact's node ID
-        @type contact: node.contact.Contact or str (GUID)
+        @param contact: The ID of the contact to remove.
+        @type contact: guid.GUIDMixin or str or unicode
 
-        @raise ValueError: The specified contact is not in this bucket
+        @raise ValueError: The specified contact is not in this bucket.
         """
-        try:
-            self.contacts.remove(contact)
-        except ValueError:
-            raise ValueError('Contact was not found in this bucket')
+        self.contacts.remove(contact)
 
     def keyInRange(self, key):
         """
-        Tests whether the specified key (i.e. node ID) is in the range
-        of the 160-bit ID space covered by this k-bucket (in other words, it
-        returns whether or not the specified key should be placed in this
-        k-bucket)
+        Tests whether the specified node ID is in the range of the ID
+        space covered by this KBucket (in other words, it returns
+        whether or not the specified key should be placed in this KBucket.
 
-        @param key: The key to test
-        @type key: str or int
+        @param key: The ID to test.
+        @type key: guid.GUIDMixin or hex or int
 
-        @return: C{True} if key is in this k-bucket's range,
-                 C{False} otherwise.
+        @return: True if key is in this KBucket's range, False otherwise.
         @rtype: bool
         """
-        if isinstance(key, string_types):
+        if isinstance(key, guid.GUIDMixin):
+            key = key.guid
+        if isinstance(key, basestring):
             key = long(key, 16)
         return self.rangeMin <= key < self.rangeMax
-
-    def __len__(self):
-        return len(self.contacts)

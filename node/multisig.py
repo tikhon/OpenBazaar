@@ -1,13 +1,9 @@
 import logging
-
-from twisted.internet import reactor
+import random
+import re
+import urllib2
 
 import obelisk
-import urllib2
-import re
-import random
-# import pybitcointools
-
 
 # Create new private key:
 #
@@ -22,6 +18,7 @@ import random
 #   $ cat key1 | sx pubkey
 #
 # You will need 3 keys for buyer, seller and arbitrer
+
 
 def build_output_info_list(unspent_rows):
     unspent_infos = []
@@ -47,7 +44,6 @@ class Multisig(object):
 
     @property
     def script(self):
-        # return pybitcointools.mk_multisig_script(self.pubkeys, 2, 3)
         result = chr(80 + self.number_required)
         for pubkey in self.pubkeys:
             result += chr(33) + pubkey
@@ -59,32 +55,23 @@ class Multisig(object):
     @property
     def address(self):
 
-        # script = self.script
-        # print 'multisig-script',script
-        #
-        # address = pybitcointools.scriptaddr(script)
-        # return address
-
         raw_addr = obelisk.hash_160(self.script)
         return obelisk.hash_160_to_bc_address(raw_addr, addrtype=0x05)
 
-    #
     def create_unsigned_transaction(self, destination, finished_cb):
         def fetched(ec, history):
             if ec is not None:
-                self.log.error("Error fetching history: %s" % ec)
+                self.log.error("Error fetching history: %s", ec)
                 return
             self._fetched(history, destination, finished_cb)
 
         self.client.fetch_history(self.address, fetched)
 
-    #
     def _fetched(self, history, destination, finished_cb):
         unspent = [row[:4] for row in history if row[4] is None]
         tx = self._build_actual_tx(unspent, destination)
         finished_cb(tx)
 
-    #
     @staticmethod
     def _build_actual_tx(unspent, destination):
 
@@ -130,7 +117,7 @@ class Multisig(object):
         except Exception as e:
             try:
                 p = e.read().strip()
-            except:
+            except Exception:
                 p = e
             raise Exception(p)
 
@@ -218,76 +205,3 @@ class Escrow(object):
             script += chr(len(script_code)) + script_code
             tx.inputs[i].script = script
         return tx
-
-
-def main():
-    ##########################################################
-    # ESCROW TEST
-    ##########################################################
-    pubkeys = [
-        "035b175132eeb8aa6e8455b6f1c1e4b2784bea1add47a6ded7fc9fc6b7aff16700".decode("hex"),
-        "0351e400c871e08f96246458dae79a55a59730535b13d6e1d4858035dcfc5f16e2".decode("hex"),
-        "02d53a92e3d43db101db55e351e9b42b4f711d11f6a31efbd4597695330d75d250".decode("hex")
-    ]
-    client = obelisk.ObeliskOfLightClient("tcp://85.25.198.97:8081")
-    escrow = Escrow(client, pubkeys[0], pubkeys[1], pubkeys[2])
-
-    def finished(tx):
-
-        buyer_sigs = escrow.release_funds(
-            tx,
-            "b28c7003a7b6541cd1cd881928863abac0eff85f5afb40ff5561989c9fb95fb2".decode("hex")
-        )
-
-        completed_tx = escrow.claim_funds(
-            tx,
-            "5b05667dac199c48051932f14736e6f770e7a5917d2994a15a1508daa43bc9b0".decode("hex"),
-            buyer_sigs
-        )
-        print 'COMPLETED TX: ', completed_tx.serialize().encode("hex")
-
-    # TODO: Send to the bitcoin network
-
-    escrow.initiate("1Fufjpf9RM2aQsGedhSpbSCGRHrmLMJ7yY", finished)
-
-    ##########################################################
-    # MULTISIGNATURE TEST
-    ##########################################################
-    msig = Multisig(client, 2, pubkeys)
-    print "Multisig address: ", msig.address
-
-    def finished(tx):
-        print tx
-        print ''
-        print tx.serialize().encode("hex")
-        print ''
-        sigs1 = msig.sign_all_inputs(
-            tx,
-            "b28c7003a7b6541cd1cd881928863abac0eff85f5afb40ff5561989c9fb95fb2".decode("hex")
-        )
-
-        sigs3 = msig.sign_all_inputs(
-            tx,
-            "b74dbef0909c96d5c2d6971b37c8c71d300e41cad60aeddd6b900bba61c49e70".decode("hex")
-        )
-        for i, _ in enumerate(tx.inputs):
-            sigs = (sigs1[i], sigs3[i])
-            script = "\x00"
-            for sig in sigs:
-                script += chr(len(sig)) + sig
-            script += "\x4c"
-            assert len(msig.script) < 255
-            script += chr(len(msig.script)) + msig.script
-            print "Script:", script.encode("hex")
-            tx.inputs[i].script = script
-        print tx
-        print tx.serialize().encode("hex")
-
-    msig.create_unsigned_transaction(
-        "1Fufjpf9RM2aQsGedhSpbSCGRHrmLMJ7yY",
-        finished
-    )
-    reactor.run()
-
-if __name__ == "__main__":
-    main()

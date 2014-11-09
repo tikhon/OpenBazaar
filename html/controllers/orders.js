@@ -118,7 +118,10 @@ angular.module('app')
                 if (msg.order.state == 'Notarized') {
                     $scope.modalOrder.notary = $scope.myself.guid;
                 }
-                $scope.modalOrder.shipping_address = JSON.parse($scope.modalOrder.shipping_address);
+
+                if(typeof $scope.modalOrder.shipping_address == "string") {
+                    $scope.modalOrder.shipping_address = JSON.parse($scope.modalOrder.shipping_address);
+                }
 
                 if (!$scope.$$phase) {
                     $scope.$apply();

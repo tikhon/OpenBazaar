@@ -1,0 +1,7 @@
+# openbazaar sample configuration file.
+# you can specify all arguments in a single line
+# or if you prefer you can put arguments line by line
+# so you can easily comment them out
+--disable-upnp # inline comments are supported
+-S
+--server-port 9999 --disable-stun-check # multiple arguments per line supported
