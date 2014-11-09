@@ -230,6 +230,8 @@ elif [[ $OSTYPE == linux-gnu || $OSTYPE == linux-gnueabihf ]]; then
       else
           installArch
       fi
+  elif [ -f /etc/manjaro-release ]; then
+    installArch
   elif [ -f /etc/gentoo-release ]; then
     installPortage
   elif [ -f /etc/fedora-release ]; then
