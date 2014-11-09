@@ -16,7 +16,7 @@ from bitcoin import (
     scriptaddr
 )
 import tornado.websocket
-from threading import Thread
+from twisted.internet import reactor
 from backuptool import BackupTool, Backup, BackupJSONEncoder
 import trust
 
@@ -459,7 +459,7 @@ class ProtocolHandler(object):
 
         try:
             client = obelisk.ObeliskOfLightClient(
-                'tcp://obelisk2.airbitz.co:9091'
+                'tcp://obelisk.coinkite.com:9091'
             )
 
             seller = offer_data_json['Seller']
@@ -518,7 +518,8 @@ class ProtocolHandler(object):
                     multi_address,
                     lambda ec, history, order=order: cb(ec, history, order))
 
-            Thread(target=get_history).start()
+            reactor.callFromThread(get_history)
+
         except Exception as e:
             self.log.error('%s', e)
 
@@ -562,7 +563,7 @@ class ProtocolHandler(object):
 
         try:
             client = obelisk.ObeliskOfLightClient(
-                'tcp://obelisk2.airbitz.co:9091'
+                'tcp://obelisk.coinkite.com:9091'
             )
 
             seller = offer_data_json['Seller']
@@ -630,7 +631,7 @@ class ProtocolHandler(object):
                     lambda ec, history, order=order: cb(ec, history, order)
                 )
 
-            Thread(target=get_history).start()
+            reactor.callFromThread(get_history)
 
         except Exception as e:
             self.log.error('%s', e)
@@ -681,7 +682,7 @@ class ProtocolHandler(object):
 
         try:
             client = obelisk.ObeliskOfLightClient(
-                'tcp://obelisk2.airbitz.co:9091'
+                'tcp://obelisk.coinkite.com:9091'
             )
 
             script = msg['script']
@@ -735,7 +736,7 @@ class ProtocolHandler(object):
                     lambda ec, history, order=order: cb(ec, history, order)
                 )
 
-            Thread(target=get_history).start()
+            reactor.callFromThread(get_history)
 
         except Exception as e:
             self.log.error('%s', e)

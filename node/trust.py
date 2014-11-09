@@ -1,7 +1,7 @@
 import obelisk
 import logging
 import bitcoin
-from threading import Thread
+from twisted.internet import reactor
 
 _log = logging.getLogger('trust')
 
@@ -50,5 +50,4 @@ def get_unspent(addr, callback):
 
         callback(total)
 
-    t = Thread(target=get_history)
-    t.start()
+    reactor.callFromThread(get_history)

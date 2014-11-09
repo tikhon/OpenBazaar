@@ -10,6 +10,8 @@ import tornado.httpserver
 import tornado.netutil
 import tornado.web
 from zmq.eventloop import ioloop
+from threading import Thread
+from twisted.internet import reactor
 
 from db_store import Obdb
 from market import Market
@@ -191,6 +193,8 @@ class MarketApplication(tornado.web.Application):
         self.transport = CryptoTransportLayer(ob_ctx, db)
         self.market = Market(self.transport, db)
         self.upnp_mapper = None
+
+        Thread(target=reactor.run, args=(False,)).start()
 
         peers = ob_ctx.seeds if not ob_ctx.seed_mode else []
         self.transport.join_network(peers)
