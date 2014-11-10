@@ -126,8 +126,6 @@
                                 </span>
                             </span>
                         </td>
-
-
                     </tr>
                     </tbody>
                 </table>
@@ -142,19 +140,19 @@
                 <div class="peers-area" >
                     <table id="favorite-peers" class="peers-table table-hover">
                         <tbody>
-                        <tr data-ng-repeat="peer in peers" data-ng-click="go('/user/'+peer.guid+'/products', peer.guid)">
-                            <td width="40" style="vertical-align:top"><identicon icon-size="50" hash="peer.guid" title="{{peer.guid}}"></identicon></td>
-                            <td style="font-size:14px;word-wrap:break-word;word-break:break-all">
-                                <span title="{{peer.pubkey}}">
-                                    <strong>{{peer.nick != "" ? peer.nick : peer.uri }}</strong>
-                                    <br>
-                                    <span style="font-style:italic;font-size:12px">
-                                        {{peer.nickname ? peer.nickname : peer.guid}}
-                                        <!--<div data-ng-show="peer.uri">{{peer.uri}}</div>-->
+                            <tr data-ng-repeat="peer in peers" data-ng-click="go('/user/'+peer.guid+'/products', peer.guid);">
+                                <td width="40" style="vertical-align:top"><identicon icon-size="50" hash="peer.guid" title="{{peer.guid}}"></identicon></td>
+                                <td>
+                                    <span title="{{peer.pubkey}}">
+                                        <strong>{{peer.nick != "" ? peer.nick : peer.uri }}</strong>
+                                        <br>
+                                        <span style="font-style:italic;font-size:12px">
+                                            {{peer.nickname ? peer.nickname : peer.guid}}
+                                            <!--<div data-ng-show="peer.uri">{{peer.uri}}</div>-->
+                                        </span>
                                     </span>
-                                </span>
-                            </td>
-                        </tr>
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
