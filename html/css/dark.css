@@ -10,15 +10,18 @@ a:hover {
 }
 
 /* Custom default button */
-.btn-default,
-.btn-default:hover,
-.btn-default:focus {
+.btn-default {
   color: #333;
   text-shadow: none; /* Prevent inheritence from `body` */
-  background-color: #fff;
-  border: 1px solid #fff;
+  background-color: #efefef;
+  border: 1px solid #efefef;
 }
 
+.btn-default:hover,
+.btn-default:focus {
+  background-color: #ddd;
+  border: 1px solid #ddd;
+}
 
 /*
  * Base structure
@@ -199,6 +202,15 @@ hr { border-top:#bbb; }
   background-position:center;
   width: 200px;
   height: 150px;
+  cursor:pointer;
+}
+
+.fileinput .fileinput-preview:hover {
+  background-color:#ddd;
+}
+
+.btn {
+  cursor:pointer;
 }
 
 ul.pagination { margin: 10px 0 }
