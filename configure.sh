@@ -81,13 +81,12 @@ function installMac {
   fi
 
   # create a virtualenv for OpenBazaar. note we get env/bin/pip by doing this. We also needed pip earlier to install virtualenv.
-  if [ ! -d "./env" ]; then
+  if [ ! -f "./env/bin/activate" ]; then
     virtualenv --python=python2.7 env
   fi
 
   # "To begin using the virtual environment, it needs to be activated:"
   # http://docs.python-guide.org/en/latest/dev/virtualenvs/
-  # We have autoenv and an appropriate .env in our OB home dir, but we should activate the env just in case (e.g. for first time users).
   source env/bin/activate
 
   # set compile flags for brew's openssl instead of using brew link --force
